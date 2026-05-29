@@ -100,6 +100,7 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
   ): Promise<PaymentInstance> {
     const reference = input.reference ?? generateReference();
     validateAmount(input.amount);
+    validateNonEmpty(input.customer.name, "customer.name");
     validateNonEmpty(input.customer.phoneNumber, "customer.phoneNumber");
     validateNonEmpty(input.description, "description");
     if (input.method === "bank" && !input.bank) {
@@ -141,6 +142,7 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
   ): Promise<Result<Transaction, string>> {
     const reference = input.reference ?? generateReference();
     validateAmount(input.amount);
+    validateNonEmpty(input.customer.name, "customer.name");
     validateNonEmpty(input.customer.phoneNumber, "customer.phoneNumber");
     validateNonEmpty(input.description, "description");
     if (input.method === "bank" && !input.bank) {
@@ -169,8 +171,10 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
   ): Promise<PaymentInstance> {
     const reference = input.reference ?? generateReference();
     validateAmount(input.amount);
+    validateNonEmpty(input.customer.name, "customer.name");
     validateNonEmpty(input.customer.phoneNumber, "customer.phoneNumber");
     validateNonEmpty(input.description, "description");
+    validateNonEmpty(input.destination.accountHolderName, "destination.accountHolderName");
     validateNonEmpty(input.destination.accountNumber, "destination.accountNumber");
 
     const payload = { ...input, reference };
@@ -208,8 +212,10 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
   ): Promise<Result<Transaction, string>> {
     const reference = input.reference ?? generateReference();
     validateAmount(input.amount);
+    validateNonEmpty(input.customer.name, "customer.name");
     validateNonEmpty(input.customer.phoneNumber, "customer.phoneNumber");
     validateNonEmpty(input.description, "description");
+    validateNonEmpty(input.destination.accountHolderName, "destination.accountHolderName");
     validateNonEmpty(input.destination.accountNumber, "destination.accountNumber");
 
     const payload = { ...input, reference };
