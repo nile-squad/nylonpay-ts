@@ -1,6 +1,6 @@
 # Nylon Pay TypeScript SDK
 
-Server-side SDK for integrating Nylon Pay into merchant applications. Supports TypeScript and JavaScript (ESM + CJS).
+Server-side SDK for integrating Nylon Pay into merchant applications. Supports TypeScript and JavaScript (ESM and CJS).
 
 [Full documentation](https://docs.nylonpay.nilesquad.com/docs)
 
@@ -36,19 +36,19 @@ payment.on("failed", ({ error }) => notifyCustomer(error));
 
 | Option | Required | Default | Description |
 |---|---|---|---|
-| `environment` | Yes | — | `"sandbox"` or `"live"` |
-| `apiKey` | Yes | — | Must start with `npk_` |
-| `apiSecret` | Yes | — | Must start with `nps_` |
+| `environment` | Yes | | `"sandbox"` or `"live"` |
+| `apiKey` | Yes | | Must start with `npk_` |
+| `apiSecret` | Yes | | Must start with `nps_` |
 | `baseUrl` | No | `https://api.nylonpay.io/api/services` | API endpoint |
-| `timeoutMs` | No | `30000` | Request timeout |
+| `timeoutMs` | No | `30000` | Request timeout in milliseconds |
 | `maxRetries` | No | `3` | Retry count for failed requests |
 | `maxPollIntervalMs` | No | `2000` | Polling interval for async payments |
-| `maxPollDurationMs` | No | `300000` | Max polling duration |
-| `maxPollAttempts` | No | `150` | Max polling attempts |
+| `maxPollDurationMs` | No | `300000` | Maximum polling duration in milliseconds |
+| `maxPollAttempts` | No | `150` | Maximum polling attempts |
 
 ## Operations
 
-### Collect Payment
+### collectPayment
 
 Initiate a payment collection. Returns a `PaymentInstance` with event-driven updates.
 
@@ -59,16 +59,18 @@ const payment = await nylonpay.collectPayment({
   customer: { name: "Jane", phoneNumber: "+256700000000" },
   description: "Order #1234",
   method: "mobileMoney",
-  reference: "ORDER-123", // optional, auto-generated if omitted
+  reference: "ORDER-123",
 });
 
 payment.on("success", ({ transaction }) => { /* ... */ });
 payment.on("failed", ({ error }) => { /* ... */ });
 ```
 
-### Collect Payment and Resolve
+`reference` is optional and auto-generated if omitted.
 
-Block until the collection reaches a terminal state. Single request/response.
+### collectPaymentAndResolve
+
+Block until the collection reaches a terminal state. Single request and response, no client-side polling.
 
 ```ts
 const result = await nylonpay.collectPaymentAndResolve({
@@ -81,7 +83,7 @@ const result = await nylonpay.collectPaymentAndResolve({
 if (result.isOk) console.log("Paid:", result.value.reference);
 ```
 
-### Make Payout
+### makePayout
 
 Disburse funds to a destination account.
 
@@ -97,9 +99,9 @@ const payout = await nylonpay.makePayout({
 const tx = await payout.wait();
 ```
 
-### Make Payout and Resolve
+### makePayoutAndResolve
 
-Block until the payout reaches a terminal state.
+Block until the payout reaches a terminal state. Single request and response.
 
 ```ts
 const result = await nylonpay.makePayoutAndResolve({
@@ -111,25 +113,25 @@ const result = await nylonpay.makePayoutAndResolve({
 });
 ```
 
-### Get Status
+### getStatus
 
-One-shot status check for a transaction.
+One-shot status check for a transaction. Does not poll, returns the current server-side state.
 
 ```ts
 const result = await nylonpay.getStatus({ reference: "ORDER-123" });
-if (result.isOk) console.log(result.value.status); // "successful"
+if (result.isOk) console.log(result.value.status);
 ```
 
-### Get Transaction
+### getTransaction
 
-Look up a full transaction record by `id` or `reference`.
+Look up a full transaction record by `id` or `reference`. At least one must be provided.
 
 ```ts
 const result = await nylonpay.getTransaction({ reference: "ORDER-123" });
 if (result.isOk) console.log(result.value.failureReason);
 ```
 
-### Verify Phone
+### verifyPhone
 
 Pre-validate a phone number and get the registered name.
 
@@ -140,9 +142,9 @@ if (result.isOk && result.value.verified) {
 }
 ```
 
-### Create Invoice
+### createInvoice
 
-Generate a hosted payment link (required for card payments).
+Generate a hosted payment link. Card payments are only supported via this hosted flow.
 
 ```ts
 const result = await nylonpay.createInvoice({
@@ -156,7 +158,7 @@ const result = await nylonpay.createInvoice({
 if (result.isOk) sendEmail(result.value.url);
 ```
 
-### Verify Webhook Signature
+### verifyWebhookSignature
 
 Verify incoming webhook payloads before processing.
 
@@ -169,13 +171,12 @@ app.post("/webhooks", (req, res) => {
   });
 
   if (!isValid) return res.status(401).send("Invalid signature");
-  // Process the verified webhook event
 });
 ```
 
 ## PaymentInstance Events
 
-`collectPayment` and `makePayout` return a `PaymentInstance` that emits events:
+`collectPayment` and `makePayout` return a `PaymentInstance` with event-driven updates.
 
 | Event | Description |
 |---|---|
@@ -188,14 +189,14 @@ app.post("/webhooks", (req, res) => {
 ```ts
 payment.on("success", ({ transaction }) => { /* ... */ });
 payment.once("success", ({ transaction }) => { /* fires once */ });
-payment.off("success", handler); // remove handler
+payment.off("success", handler);
 
-const tx = await payment.wait(); // block until terminal state
+const tx = await payment.wait();
 ```
 
 ## Error Handling
 
-All operations return `Result<T, string>` from [slang-ts](https://github.com/nile-squad/slang-ts). Use `parseError` to get structured `SdkError` objects:
+All operations return `Result<T, string>` from [slang-ts](https://github.com/nile-squad/slang-ts). Use `parseError` to get structured error objects.
 
 ```ts
 import { parseError } from "@nylonpay/sdk";
