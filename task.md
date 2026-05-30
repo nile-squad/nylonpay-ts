@@ -1,7 +1,7 @@
 # TypeScript SDK Implementation — Spec Compliance Rewrite
 
 ## Goal
-Rewrite the TypeScript SDK at `packages/sdks/typescript/` to fully comply `docs/sdk-spec.md` (v1.0.0).
+Rewrite the TypeScript SDK at `packages/sdks/typescript/` to fully comply `docs/public/sdk-spec.md` (v1.0.0).
 
 ## Current State
 - 3 of 9 operations implemented (`collectPayment`, `getStatus`, `createInvoice`) — all with wrong types and wrong transport
