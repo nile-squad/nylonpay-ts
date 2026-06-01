@@ -77,9 +77,9 @@ function buildEnvelope({
  * Build auth headers for a request.
  *
  * The signature is computed over the inner `payload` (the operation input plus
- * `_fingerprint`), NOT the full Nile envelope. This matches the backend, which
- * verifies the signature against the raw request payload — see the transport
- * contract in docs/public/sdk-spec.md and backend verify-signature.ts.
+ * `_fingerprint`), NOT the full Nile envelope. This matches the server, which
+ * verifies the signature against the raw request payload — see the Transport
+ * Contract in the Nylon Pay SDK Spec (https://github.com/nile-squad/specs).
  */
 function buildAuthHeaders({
   apiKey,
