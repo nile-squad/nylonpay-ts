@@ -3,9 +3,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createNylonPay } from "./create-nylon-pay";
 import {
   DEFAULT_BASE_URL,
-  DEFAULT_MAX_POLL_ATTEMPTS,
-  DEFAULT_MAX_POLL_DURATION_MS,
-  DEFAULT_MAX_POLL_INTERVAL_MS,
   DEFAULT_MAX_RETRIES,
   DEFAULT_TIMEOUT_MS,
 } from "./sdk.config";

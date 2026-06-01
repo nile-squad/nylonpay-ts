@@ -52,7 +52,7 @@ export function createEmitter<T extends string>() {
     if (!state.listeners.has(event)) {
       state.listeners.set(event, new Set());
     }
-    state.listeners.get(event)!.add(handler as EventHandler<unknown>);
+    state.listeners.get(event)?.add(handler as EventHandler<unknown>);
     return () => off(event, handler);
   }
 

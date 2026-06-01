@@ -1,12 +1,7 @@
 import { Err, Ok } from "slang-ts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createPaymentInstance } from "./payment";
-import type {
-  EventData,
-  PaymentEventHandler,
-  StatusResponse,
-  Transaction,
-} from "./types";
+import type { PaymentEventHandler, Transaction } from "./types";
 
 const mockTransaction: Transaction = {
   id: "txn-123",
@@ -446,7 +441,6 @@ describe("createPaymentInstance", () => {
 
   describe("on/once/off", () => {
     it("on registers handler that fires on every status change", async () => {
-      const handler = vi.fn();
       const deps = createMockDeps();
       // First poll: pending → processing (fires "processing" event)
       // Second poll: processing → successful (fires "success" event, not "processing")

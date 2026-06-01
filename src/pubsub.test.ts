@@ -57,7 +57,7 @@ describe("createEmitter", () => {
     const unsub1 = emitter.on("test", () => {});
     expect(emitter.listenerCount("test")).toBe(1);
 
-    const unsub2 = emitter.on("test", () => {});
+    const _unsub2 = emitter.on("test", () => {});
     expect(emitter.listenerCount("test")).toBe(2);
 
     unsub1();
