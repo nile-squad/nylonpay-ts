@@ -8,6 +8,7 @@
 
 import type { Result } from "slang-ts";
 import { createEmitter, type Emitter } from "./pubsub";
+import { parseError } from "./transport";
 import type {
   EventData,
   GetStatusInput,
@@ -105,7 +106,7 @@ export function createPaymentInstance(
   function resolveWithError(error: string): void {
     state.resolved = true;
     stopPolling();
-    emitEvent("error", error);
+    emitEvent("error", parseError(error).message);
   }
 
   /**
@@ -183,7 +184,7 @@ export function createPaymentInstance(
     if (isNotFound) {
       return;
     }
-    emitEvent("error", error);
+    emitEvent("error", parseError(error).message);
     state.resolved = true;
     stopPolling();
   }

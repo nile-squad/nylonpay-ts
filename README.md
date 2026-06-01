@@ -35,14 +35,13 @@ payment.on("failed", ({ error }) => notifyCustomer(error));
 
 ## Configuration
 
-> Test vs. live mode is selected by your API key — a sandbox key routes to test
-> providers, a live key processes real money. There is no `environment` option.
+Use your test keys to work in sandbox, or your production keys to go live. There is no separate `environment` option — the key determines the mode.
 
 | Option | Required | Default | Description |
 |---|---|---|---|
 | `apiKey` | Yes | | Must start with `npk_` |
 | `apiSecret` | Yes | | Must start with `nps_` |
-| `baseUrl` | No | `https://api.nylonpay.io/api/services` | API endpoint |
+| `baseUrl` | No | Default is used | Override only if self-hosting |
 | `timeoutMs` | No | `30000` | Request timeout in milliseconds |
 | `maxRetries` | No | `3` | Retry count for failed requests |
 | `maxPollIntervalMs` | No | `2000` | Polling interval for async payments |
@@ -170,7 +169,7 @@ app.post("/webhooks", (req, res) => {
   const isValid = nylonpay.verifyWebhookSignature({
     payload: req.rawBody,
     signature: req.headers["x-nylon-signature"],
-    secret: process.env.NYLONPAY_WEBHOOK_SECRET,
+    secret: "nps_...",
   });
 
   if (!isValid) return res.status(401).send("Invalid signature");

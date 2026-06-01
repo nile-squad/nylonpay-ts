@@ -1,5 +1,5 @@
 /** Default production backend URL */
-export const DEFAULT_BASE_URL = "https://api.nylonpay.io/api/services";
+export const DEFAULT_BASE_URL = "https://api.nylonpay.nilesquad.com/api/services";
 
 /** Default request timeout (30 seconds) */
 export const DEFAULT_TIMEOUT_MS = 30_000;
