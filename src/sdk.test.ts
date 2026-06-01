@@ -1,6 +1,14 @@
 import { Err, Ok } from "slang-ts";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createNylonPay } from "./create-nylon-pay";
+import {
+  DEFAULT_BASE_URL,
+  DEFAULT_MAX_POLL_ATTEMPTS,
+  DEFAULT_MAX_POLL_DURATION_MS,
+  DEFAULT_MAX_POLL_INTERVAL_MS,
+  DEFAULT_MAX_RETRIES,
+  DEFAULT_TIMEOUT_MS,
+} from "./sdk.config";
 import { createTransport } from "./transport";
 import type { Transaction } from "./types";
 
@@ -79,9 +87,9 @@ describe("createNylonPay", () => {
 
       expect(createTransport).toHaveBeenCalledWith(
         expect.objectContaining({
-          baseUrl: "https://api.nylonpay.nilesquad.com/api/services",
-          timeoutMs: 30000,
-          maxRetries: 3,
+          baseUrl: DEFAULT_BASE_URL,
+          timeoutMs: DEFAULT_TIMEOUT_MS,
+          maxRetries: DEFAULT_MAX_RETRIES,
         }),
       );
     });
