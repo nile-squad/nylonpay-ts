@@ -33,8 +33,12 @@ type PaymentState = {
   pollAttempts: number;
   pollStartTime: number;
   emitter: Emitter<PaymentEvent>;
-  fetchStatus: (input: GetStatusInput) => Promise<Result<StatusResponse, string>>;
-  fetchTransaction: (input: GetTransactionInput) => Promise<Result<Transaction, string>>;
+  fetchStatus: (
+    input: GetStatusInput,
+  ) => Promise<Result<StatusResponse, string>>;
+  fetchTransaction: (
+    input: GetTransactionInput,
+  ) => Promise<Result<Transaction, string>>;
   pollIntervalMs: number;
   maxPollDuration: number;
   maxPollAttempts: number;
@@ -71,8 +75,12 @@ const TERMINAL_STATES = new Set<TransactionStatus>([
 export function createPaymentInstance(
   initialResponse: { reference: string; status: TransactionStatus },
   deps: {
-    fetchStatus: (input: GetStatusInput) => Promise<Result<StatusResponse, string>>;
-    fetchTransaction: (input: GetTransactionInput) => Promise<Result<Transaction, string>>;
+    fetchStatus: (
+      input: GetStatusInput,
+    ) => Promise<Result<StatusResponse, string>>;
+    fetchTransaction: (
+      input: GetTransactionInput,
+    ) => Promise<Result<Transaction, string>>;
     pollIntervalMs?: number;
     maxPollDuration?: number;
     maxPollAttempts?: number;
@@ -119,7 +127,9 @@ export function createPaymentInstance(
    * @internal
    */
   async function handleTerminalState(status: TransactionStatus): Promise<void> {
-    const txResult = await state.fetchTransaction({ reference: state.reference });
+    const txResult = await state.fetchTransaction({
+      reference: state.reference,
+    });
     if (txResult.isOk) {
       state.transaction = txResult.value;
       const event = statusToEvent(status);
@@ -305,7 +315,9 @@ export function createPaymentInstance(
         if (state.transaction) {
           resolve(state.transaction);
         } else {
-          reject(new Error("Payment successful but transaction data unavailable"));
+          reject(
+            new Error("Payment successful but transaction data unavailable"),
+          );
         }
       }
 

@@ -9,13 +9,13 @@ This package is the reference implementation of the [Nylon Pay SDK Spec](https:/
 ## Install
 
 ```bash
-npm install @nylonpay/sdk
+npm install @nile-squad/nylonpay-ts
 ```
 
 ## Quick Start
 
 ```ts
-import { createNylonPay } from "@nylonpay/sdk";
+import { createNylonPay } from "@nile-squad/nylonpay-ts";
 
 const nylonpay = createNylonPay({
   apiKey: "npk_...",
@@ -202,7 +202,7 @@ const tx = await payment.wait();
 All operations return `Result<T, string>` from [slang-ts](https://github.com/nile-squad/slang-ts). Use `parseError` to get structured error objects.
 
 ```ts
-import { parseError } from "@nylonpay/sdk";
+import { parseError } from "@nile-squad/nylonpay-ts";
 
 const result = await nylonpay.getStatus({ reference: "ORDER-123" });
 if (!result.isOk) {

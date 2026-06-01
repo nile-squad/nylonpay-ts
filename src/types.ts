@@ -1,4 +1,4 @@
-import type { Result } from 'slang-ts';
+import type { Result } from "slang-ts";
 
 /**
  * Lifecycle states a transaction can occupy. Merchants use these to drive

@@ -33,8 +33,8 @@ describe("verifyResponseSignature", () => {
       verifyResponseSignature(
         { ...data, status: "successful" },
         signature,
-        "secret-key"
-      )
+        "secret-key",
+      ),
     ).toBe(false);
   });
 
@@ -47,7 +47,7 @@ describe("verifyResponseSignature", () => {
     const signature = signResponse(data, "correct-secret");
 
     expect(verifyResponseSignature(data, signature, "wrong-secret")).toBe(
-      false
+      false,
     );
   });
 });

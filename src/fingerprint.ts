@@ -5,8 +5,8 @@
  * @see Spec 2 section 1 - "a server fingerprint based on runtime, os, etc"
  */
 
-import { arch, hostname, platform, release, type } from "node:os";
 import { createHash } from "node:crypto";
+import { arch, hostname, platform, release, type } from "node:os";
 
 /**
  * Generate a server fingerprint based on runtime environment.

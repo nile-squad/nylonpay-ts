@@ -9,7 +9,6 @@
 import { Err, Ok, type Result } from "slang-ts";
 import { generateFingerprint } from "./fingerprint";
 import { generateNonce } from "./nonce";
-import { createSignature, createTimestamp } from "./signature";
 import {
   DEFAULT_BASE_URL,
   DEFAULT_MAX_RETRIES,
@@ -17,8 +16,9 @@ import {
   RETRYABLE_STATUS_CODES,
   SDK_SERVICE,
 } from "./sdk.config";
-import { verifyResponseSignature } from "./verify-response";
+import { createSignature, createTimestamp } from "./signature";
 import type { SdkError, TransportRequest } from "./types";
+import { verifyResponseSignature } from "./verify-response";
 
 /** Cached fingerprint for this server instance. */
 const CACHED_FINGERPRINT = generateFingerprint();

@@ -13,7 +13,7 @@ import { createCanonicalPayload } from "./signature";
 export function verifyResponseSignature(
   data: unknown,
   signature: string,
-  secret: string
+  secret: string,
 ): boolean {
   const expectedSignature = createHmac("sha256", secret)
     .update(createCanonicalPayload(data))

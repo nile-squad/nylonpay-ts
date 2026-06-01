@@ -1,4 +1,4 @@
-import { Ok, Err } from "slang-ts";
+import { Err, Ok } from "slang-ts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createPaymentInstance } from "./payment";
 import type {
@@ -256,7 +256,9 @@ describe("createPaymentInstance", () => {
       // Duration exceeded before first poll, so fetchStatus should not be called
       expect(deps.fetchStatus).toHaveBeenCalledTimes(0);
       expect(handler).toHaveBeenCalledTimes(1);
-      expect(handler.mock.calls[0][0].error).toContain("exceeded maximum duration");
+      expect(handler.mock.calls[0][0].error).toContain(
+        "exceeded maximum duration",
+      );
 
       // No further polling
       await vi.advanceTimersByTimeAsync(100);
@@ -395,7 +397,8 @@ describe("createPaymentInstance", () => {
       );
 
       const waitPromise = instance.wait();
-      const rejection = expect(waitPromise).rejects.toThrow("Payment cancelled");
+      const rejection =
+        expect(waitPromise).rejects.toThrow("Payment cancelled");
       await vi.advanceTimersByTimeAsync(10);
       await rejection;
     });

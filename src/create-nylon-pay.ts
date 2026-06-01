@@ -4,7 +4,7 @@
  *
  * @example
  * ```ts
- * import { createNylonPay } from "@nylonpay/sdk";
+ * import { createNylonPay } from "@nile-squad/nylonpay-ts";
  *
  * export const nylonpay = createNylonPay({
  *   apiKey: process.env.NYLONPAY_API_KEY!,
@@ -14,7 +14,6 @@
  */
 
 import { createSdkInstance, type NylonPaySdk } from "./sdk";
-import type { NylonPayConfig } from "./types";
 import {
   DEFAULT_BASE_URL,
   DEFAULT_MAX_POLL_ATTEMPTS,
@@ -23,6 +22,7 @@ import {
   DEFAULT_MAX_RETRIES,
   DEFAULT_TIMEOUT_MS,
 } from "./sdk.config";
+import type { NylonPayConfig } from "./types";
 
 /**
  * Create a Nylon Pay SDK instance.
@@ -53,8 +53,7 @@ export function createNylonPay(config: NylonPayConfig): NylonPaySdk {
     timeoutMs: config.timeoutMs ?? DEFAULT_TIMEOUT_MS,
     maxRetries: config.maxRetries ?? DEFAULT_MAX_RETRIES,
     maxPollIntervalMs: config.maxPollIntervalMs ?? DEFAULT_MAX_POLL_INTERVAL_MS,
-    maxPollDurationMs:
-      config.maxPollDurationMs ?? DEFAULT_MAX_POLL_DURATION_MS,
+    maxPollDurationMs: config.maxPollDurationMs ?? DEFAULT_MAX_POLL_DURATION_MS,
     maxPollAttempts: config.maxPollAttempts ?? DEFAULT_MAX_POLL_ATTEMPTS,
     fetch: config.fetch ?? globalThis.fetch.bind(globalThis),
   };

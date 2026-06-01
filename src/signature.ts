@@ -23,14 +23,14 @@ function sortValue(value: unknown): unknown {
 
   if (value && typeof value === "object") {
     const sortedEntries = Object.entries(value as Record<string, unknown>).sort(
-      ([firstKey], [secondKey]) => firstKey.localeCompare(secondKey)
+      ([firstKey], [secondKey]) => firstKey.localeCompare(secondKey),
     );
 
     return Object.fromEntries(
       sortedEntries.map(([entryKey, entryValue]) => [
         entryKey,
         sortValue(entryValue),
-      ])
+      ]),
     );
   }
 

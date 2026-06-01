@@ -1,7 +1,7 @@
 import { createHmac } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createTransport, parseError } from "./transport";
 import { createCanonicalPayload } from "./signature";
+import { createTransport, parseError } from "./transport";
 
 function signResponse(payload: unknown, secret: string): string {
   return createHmac("sha256", secret)
@@ -39,7 +39,10 @@ describe("createTransport", () => {
       });
 
       const transport = createTestTransport();
-      await transport.send({ action: "sdk-collect-payment", payload: { amount: 1000 } });
+      await transport.send({
+        action: "sdk-collect-payment",
+        payload: { amount: 1000 },
+      });
 
       expect(mockFetch).toHaveBeenCalledTimes(1);
       const [, options] = mockFetch.mock.calls[0];
@@ -60,7 +63,10 @@ describe("createTransport", () => {
       });
 
       const transport = createTestTransport();
-      await transport.send({ action: "sdk-collect-payment", payload: { amount: 1000 } });
+      await transport.send({
+        action: "sdk-collect-payment",
+        payload: { amount: 1000 },
+      });
 
       const [, options] = mockFetch.mock.calls[0];
       const body = JSON.parse(options.body as string);
@@ -97,17 +103,25 @@ describe("createTransport", () => {
           Promise.resolve({
             status: true,
             message: "OK",
-            data: { ...data, _responseSignature: signResponse(data, "nps_test") },
+            data: {
+              ...data,
+              _responseSignature: signResponse(data, "nps_test"),
+            },
           }),
       });
 
       const transport = createTestTransport();
-      const result = await transport.send({ action: "sdk-collect-payment", payload: {} });
+      const result = await transport.send({
+        action: "sdk-collect-payment",
+        payload: {},
+      });
 
       expect(result.isOk).toBe(true);
       if (result.isOk) {
         expect(result.value).toEqual(data);
-        expect("_responseSignature" in (result.value as Record<string, unknown>)).toBe(false);
+        expect(
+          "_responseSignature" in (result.value as Record<string, unknown>),
+        ).toBe(false);
       }
     });
 
@@ -123,7 +137,10 @@ describe("createTransport", () => {
       });
 
       const transport = createTestTransport();
-      const result = await transport.send({ action: "sdk-collect-payment", payload: {} });
+      const result = await transport.send({
+        action: "sdk-collect-payment",
+        payload: {},
+      });
 
       expect(result.isErr).toBe(true);
       if (result.isErr) {
@@ -140,7 +157,10 @@ describe("createTransport", () => {
       });
 
       const transport = createTestTransport();
-      const result = await transport.send({ action: "sdk-collect-payment", payload: {} });
+      const result = await transport.send({
+        action: "sdk-collect-payment",
+        payload: {},
+      });
 
       expect(result.isErr).toBe(true);
       if (result.isErr) {
@@ -159,13 +179,19 @@ describe("createTransport", () => {
             message: "OK",
             data: {
               ...data,
-              _responseSignature: signResponse({ reference: "tampered" }, "nps_test"),
+              _responseSignature: signResponse(
+                { reference: "tampered" },
+                "nps_test",
+              ),
             },
           }),
       });
 
       const transport = createTestTransport();
-      const result = await transport.send({ action: "sdk-collect-payment", payload: {} });
+      const result = await transport.send({
+        action: "sdk-collect-payment",
+        payload: {},
+      });
 
       expect(result.isErr).toBe(true);
       if (result.isErr) {
@@ -181,60 +207,65 @@ describe("createTransport", () => {
      * The transport uses delay() with exponential backoff, which relies on setTimeout.
      * With fake timers, we must advance time to let the retries fire.
      */
-    async function sendWithTimerFlush(transport: ReturnType<typeof createTestTransport>) {
-      const sendPromise = transport.send({ action: "sdk-collect-payment", payload: {} });
+    async function sendWithTimerFlush(
+      transport: ReturnType<typeof createTestTransport>,
+    ) {
+      const sendPromise = transport.send({
+        action: "sdk-collect-payment",
+        payload: {},
+      });
       // Flush enough time for all possible retry backoffs (2^0*1000 + 2^1*1000 + 2^2*1000 + jitter ≈ 8000ms)
       await vi.advanceTimersByTimeAsync(10_000);
       return sendPromise;
     }
 
-    it.each([408, 429, 500, 502, 503, 504])(
-      "retries on HTTP %i",
-      async (statusCode) => {
-        mockFetch
-          .mockResolvedValueOnce({
-            ok: false,
-            status: statusCode,
-            statusText: "Error",
-            json: () => Promise.resolve({}),
-          })
-          .mockResolvedValueOnce({
-            ok: true,
-            json: () => Promise.resolve({ status: true, message: "OK", data: {} }),
-          });
-
-        const transport = createTestTransport();
-        const result = await sendWithTimerFlush(transport);
-
-        expect(result.isOk).toBe(true);
-        expect(mockFetch).toHaveBeenCalledTimes(2);
-      },
-    );
-
-    it.each([400, 401, 403, 404, 422])(
-      "does not retry on HTTP %i",
-      async (statusCode) => {
-        mockFetch.mockResolvedValueOnce({
+    it.each([
+      408, 429, 500, 502, 503, 504,
+    ])("retries on HTTP %i", async (statusCode) => {
+      mockFetch
+        .mockResolvedValueOnce({
           ok: false,
           status: statusCode,
           statusText: "Error",
-          json: () => Promise.resolve({ message: "Client error" }),
+          json: () => Promise.resolve({}),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve({ status: true, message: "OK", data: {} }),
         });
 
-        const transport = createTestTransport();
-        const result = await sendWithTimerFlush(transport);
+      const transport = createTestTransport();
+      const result = await sendWithTimerFlush(transport);
 
-        expect(result.isErr).toBe(true);
-        expect(mockFetch).toHaveBeenCalledTimes(1);
-      },
-    );
+      expect(result.isOk).toBe(true);
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
+
+    it.each([
+      400, 401, 403, 404, 422,
+    ])("does not retry on HTTP %i", async (statusCode) => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: statusCode,
+        statusText: "Error",
+        json: () => Promise.resolve({ message: "Client error" }),
+      });
+
+      const transport = createTestTransport();
+      const result = await sendWithTimerFlush(transport);
+
+      expect(result.isErr).toBe(true);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
 
     it("retries on network error", async () => {
       mockFetch
         .mockRejectedValueOnce(new Error("ECONNREFUSED"))
         .mockResolvedValueOnce({
           ok: true,
-          json: () => Promise.resolve({ status: true, message: "OK", data: {} }),
+          json: () =>
+            Promise.resolve({ status: true, message: "OK", data: {} }),
         });
 
       const transport = createTestTransport();
@@ -245,13 +276,14 @@ describe("createTransport", () => {
     });
 
     it("retries on timeout (AbortError)", async () => {
-      const abortError = new DOMException("The operation was aborted", "AbortError");
-      mockFetch
-        .mockRejectedValueOnce(abortError)
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve({ status: true, message: "OK", data: {} }),
-        });
+      const abortError = new DOMException(
+        "The operation was aborted",
+        "AbortError",
+      );
+      mockFetch.mockRejectedValueOnce(abortError).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ status: true, message: "OK", data: {} }),
+      });
 
       const transport = createTestTransport();
       const result = await sendWithTimerFlush(transport);
@@ -275,7 +307,8 @@ describe("createTransport", () => {
         .mockRejectedValueOnce(new Error("Network error"))
         .mockResolvedValueOnce({
           ok: true,
-          json: () => Promise.resolve({ status: true, message: "OK", data: {} }),
+          json: () =>
+            Promise.resolve({ status: true, message: "OK", data: {} }),
         });
 
       const transport = createTestTransport();

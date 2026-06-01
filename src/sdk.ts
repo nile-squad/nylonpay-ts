@@ -3,12 +3,11 @@
  * Created via createNylonPay factory and returned as NylonPaySdk.
  */
 
-import { Err, Ok, type Result } from "slang-ts";
 import { randomBytes } from "node:crypto";
+import { Err, Ok, type Result } from "slang-ts";
 import { createPaymentInstance } from "./payment";
-import { createTransport } from "./transport";
-import { verifyWebhookSignature } from "./verify-webhook";
 import { SDK_ACTIONS } from "./sdk.config";
+import { createTransport } from "./transport";
 import type {
   CollectPaymentInput,
   CreateInvoiceInput,
@@ -25,6 +24,7 @@ import type {
   VerifyPhoneInput,
   VerifyWebhookInput,
 } from "./types";
+import { verifyWebhookSignature } from "./verify-webhook";
 
 export type { NylonPaySdk } from "./types";
 
@@ -165,16 +165,20 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
    * Auto-generates reference if omitted. Returns a PaymentInstance
    * that emits events as the transaction progresses.
    */
-  async function makePayout(
-    input: MakePayoutInput,
-  ): Promise<PaymentInstance> {
+  async function makePayout(input: MakePayoutInput): Promise<PaymentInstance> {
     const reference = input.reference ?? generateReference();
     validateAmount(input.amount);
     validateNonEmpty(input.customer.name, "customer.name");
     validateNonEmpty(input.customer.phoneNumber, "customer.phoneNumber");
     validateNonEmpty(input.description, "description");
-    validateNonEmpty(input.destination.accountHolderName, "destination.accountHolderName");
-    validateNonEmpty(input.destination.accountNumber, "destination.accountNumber");
+    validateNonEmpty(
+      input.destination.accountHolderName,
+      "destination.accountHolderName",
+    );
+    validateNonEmpty(
+      input.destination.accountNumber,
+      "destination.accountNumber",
+    );
 
     const payload = { ...input, reference };
     const result = await transport.send<{
@@ -214,8 +218,14 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
     validateNonEmpty(input.customer.name, "customer.name");
     validateNonEmpty(input.customer.phoneNumber, "customer.phoneNumber");
     validateNonEmpty(input.description, "description");
-    validateNonEmpty(input.destination.accountHolderName, "destination.accountHolderName");
-    validateNonEmpty(input.destination.accountNumber, "destination.accountNumber");
+    validateNonEmpty(
+      input.destination.accountHolderName,
+      "destination.accountHolderName",
+    );
+    validateNonEmpty(
+      input.destination.accountNumber,
+      "destination.accountNumber",
+    );
 
     const payload = { ...input, reference };
     const result = await transport.send<Transaction>({

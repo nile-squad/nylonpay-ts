@@ -1,7 +1,26 @@
 {
-  "name": "@nylonpay/sdk",
-  "version": "0.1.0",
+  "name": "@nile-squad/nylonpay-ts",
+  "version": "1.0.0",
   "description": "Nylon Pay SDK for merchant integrations",
+  "keywords": [
+    "nylonpay",
+    "nylon-pay",
+    "payments",
+    "mobile-money",
+    "payouts",
+    "fintech",
+    "sdk",
+    "typescript"
+  ],
+  "homepage": "https://github.com/nile-squad/nylonpay-ts#readme",
+  "bugs": {
+    "url": "https://github.com/nile-squad/nylonpay-ts/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nile-squad/nylonpay-ts.git"
+  },
+  "author": "Nile Squad <contact@nilesquad.com> (https://nilesquad.com)",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -18,19 +37,30 @@
       }
     }
   },
+  "sideEffects": false,
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "export": "tsc --noEmit && biome check . && tsup",
+    "prepublishOnly": "vitest run && tsc --noEmit && biome check . && tsup"
   },
   "dependencies": {
     "slang-ts": "^0.0.7"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.2.0",
     "@types/node": "^22.0.0",
     "tsup": "^8.4.0",
     "typescript": "^5.7.0",
