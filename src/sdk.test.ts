@@ -79,7 +79,7 @@ describe("createNylonPay", () => {
 
       expect(createTransport).toHaveBeenCalledWith(
         expect.objectContaining({
-          baseUrl: "https://api.nylonpay.io/api/services",
+          baseUrl: "https://api.nylonpay.nilesquad.com/api/services",
           timeoutMs: 30000,
           maxRetries: 3,
         }),
