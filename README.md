@@ -215,6 +215,17 @@ if (!result.isOk) {
 
 `USD`, `EUR`, `GBP`, `KES`, `UGX`, `TZS`, `RWF`
 
+## Development
+
+Maintainer notes and pending work live in [`dev-note.md`](./dev-note.md).
+
+```sh
+pnpm install
+pnpm test        # vitest
+pnpm typecheck   # tsc --noEmit
+pnpm build       # tsup
+```
+
 ## License
 
 MIT
