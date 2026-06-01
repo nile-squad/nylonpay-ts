@@ -42,9 +42,7 @@ describe("createNylonPay", () => {
 
   describe("config validation", () => {
     it("creates SDK instance with valid config", () => {
-      const sdk = createNylonPay({
-        environment: "sandbox",
-        apiKey: "npk_test",
+      const sdk = createNylonPay({        apiKey: "npk_test",
         apiSecret: "nps_test",
       });
       expect(sdk).toBeDefined();
@@ -53,9 +51,7 @@ describe("createNylonPay", () => {
 
     it("throws when apiKey is missing", () => {
       expect(() =>
-        createNylonPay({
-          environment: "sandbox",
-          apiKey: "",
+        createNylonPay({          apiKey: "",
           apiSecret: "nps_test",
         }),
       ).toThrow("apiKey is required");
@@ -63,9 +59,7 @@ describe("createNylonPay", () => {
 
     it("throws when apiKey lacks npk_ prefix", () => {
       expect(() =>
-        createNylonPay({
-          environment: "sandbox",
-          apiKey: "invalid_key",
+        createNylonPay({          apiKey: "invalid_key",
           apiSecret: "nps_test",
         }),
       ).toThrow('apiKey must start with "npk_"');
@@ -73,9 +67,7 @@ describe("createNylonPay", () => {
 
     it("throws when apiSecret is missing", () => {
       expect(() =>
-        createNylonPay({
-          environment: "sandbox",
-          apiKey: "npk_test",
+        createNylonPay({          apiKey: "npk_test",
           apiSecret: "",
         }),
       ).toThrow("apiSecret is required");
@@ -83,28 +75,14 @@ describe("createNylonPay", () => {
 
     it("throws when apiSecret lacks nps_ prefix", () => {
       expect(() =>
-        createNylonPay({
-          environment: "sandbox",
-          apiKey: "npk_test",
+        createNylonPay({          apiKey: "npk_test",
           apiSecret: "invalid_secret",
         }),
       ).toThrow('apiSecret must start with "nps_"');
     });
 
-    it("throws when environment is invalid", () => {
-      expect(() =>
-        createNylonPay({
-          environment: "staging" as "sandbox",
-          apiKey: "npk_test",
-          apiSecret: "nps_test",
-        }),
-      ).toThrow('environment must be "sandbox" or "live"');
-    });
-
     it("applies default values correctly", () => {
-      createNylonPay({
-        environment: "sandbox",
-        apiKey: "npk_test",
+      createNylonPay({        apiKey: "npk_test",
         apiSecret: "nps_test",
       });
 
@@ -122,9 +100,7 @@ describe("createNylonPay", () => {
     it("collectPayment returns PaymentInstance with correct reference", async () => {
       mockSend.mockResolvedValue(Ok({ reference: "test-ref", status: "pending" }));
 
-      const sdk = createNylonPay({
-        environment: "sandbox",
-        apiKey: "npk_test",
+      const sdk = createNylonPay({        apiKey: "npk_test",
         apiSecret: "nps_test",
       });
 
@@ -141,9 +117,7 @@ describe("createNylonPay", () => {
     it("collectPayment auto-generates reference when omitted", async () => {
       mockSend.mockResolvedValue(Ok({ reference: "auto-ref", status: "pending" }));
 
-      const sdk = createNylonPay({
-        environment: "sandbox",
-        apiKey: "npk_test",
+      const sdk = createNylonPay({        apiKey: "npk_test",
         apiSecret: "nps_test",
       });
 
@@ -163,9 +137,7 @@ describe("createNylonPay", () => {
     it("collectPaymentAndResolve returns Transaction on success", async () => {
       mockSend.mockResolvedValue(Ok(mockTransaction));
 
-      const sdk = createNylonPay({
-        environment: "sandbox",
-        apiKey: "npk_test",
+      const sdk = createNylonPay({        apiKey: "npk_test",
         apiSecret: "nps_test",
       });
 
@@ -185,9 +157,7 @@ describe("createNylonPay", () => {
     it("makePayout returns PaymentInstance", async () => {
       mockSend.mockResolvedValue(Ok({ reference: "payout-ref", status: "pending" }));
 
-      const sdk = createNylonPay({
-        environment: "sandbox",
-        apiKey: "npk_test",
+      const sdk = createNylonPay({        apiKey: "npk_test",
         apiSecret: "nps_test",
       });
 
@@ -206,9 +176,7 @@ describe("createNylonPay", () => {
       const payoutTx = { ...mockTransaction, type: "payout" as const };
       mockSend.mockResolvedValue(Ok(payoutTx));
 
-      const sdk = createNylonPay({
-        environment: "sandbox",
-        apiKey: "npk_test",
+      const sdk = createNylonPay({        apiKey: "npk_test",
         apiSecret: "nps_test",
       });
 
@@ -237,9 +205,7 @@ describe("createNylonPay", () => {
         }),
       );
 
-      const sdk = createNylonPay({
-        environment: "sandbox",
-        apiKey: "npk_test",
+      const sdk = createNylonPay({        apiKey: "npk_test",
         apiSecret: "nps_test",
       });
 
@@ -254,9 +220,7 @@ describe("createNylonPay", () => {
     it("getTransaction returns Transaction", async () => {
       mockSend.mockResolvedValue(Ok(mockTransaction));
 
-      const sdk = createNylonPay({
-        environment: "sandbox",
-        apiKey: "npk_test",
+      const sdk = createNylonPay({        apiKey: "npk_test",
         apiSecret: "nps_test",
       });
 
@@ -277,9 +241,7 @@ describe("createNylonPay", () => {
         }),
       );
 
-      const sdk = createNylonPay({
-        environment: "sandbox",
-        apiKey: "npk_test",
+      const sdk = createNylonPay({        apiKey: "npk_test",
         apiSecret: "nps_test",
       });
 
@@ -302,9 +264,7 @@ describe("createNylonPay", () => {
         }),
       );
 
-      const sdk = createNylonPay({
-        environment: "sandbox",
-        apiKey: "npk_test",
+      const sdk = createNylonPay({        apiKey: "npk_test",
         apiSecret: "nps_test",
       });
 
@@ -321,9 +281,7 @@ describe("createNylonPay", () => {
     });
 
     it("verifyWebhookSignature delegates to standalone function", () => {
-      const sdk = createNylonPay({
-        environment: "sandbox",
-        apiKey: "npk_test",
+      const sdk = createNylonPay({        apiKey: "npk_test",
         apiSecret: "nps_test",
       });
 
@@ -338,9 +296,7 @@ describe("createNylonPay", () => {
 
   describe("input validation", () => {
     it("throws on zero amount for collectPayment", async () => {
-      const sdk = createNylonPay({
-        environment: "sandbox",
-        apiKey: "npk_test",
+      const sdk = createNylonPay({        apiKey: "npk_test",
         apiSecret: "nps_test",
       });
 
@@ -355,9 +311,7 @@ describe("createNylonPay", () => {
     });
 
     it("throws on negative amount for collectPayment", async () => {
-      const sdk = createNylonPay({
-        environment: "sandbox",
-        apiKey: "npk_test",
+      const sdk = createNylonPay({        apiKey: "npk_test",
         apiSecret: "nps_test",
       });
 
@@ -372,9 +326,7 @@ describe("createNylonPay", () => {
     });
 
     it("throws when customer.phoneNumber is empty", async () => {
-      const sdk = createNylonPay({
-        environment: "sandbox",
-        apiKey: "npk_test",
+      const sdk = createNylonPay({        apiKey: "npk_test",
         apiSecret: "nps_test",
       });
 
@@ -389,9 +341,7 @@ describe("createNylonPay", () => {
     });
 
     it("throws when description is empty", async () => {
-      const sdk = createNylonPay({
-        environment: "sandbox",
-        apiKey: "npk_test",
+      const sdk = createNylonPay({        apiKey: "npk_test",
         apiSecret: "nps_test",
       });
 
@@ -406,9 +356,7 @@ describe("createNylonPay", () => {
     });
 
     it("throws when method is bank without bank details", async () => {
-      const sdk = createNylonPay({
-        environment: "sandbox",
-        apiKey: "npk_test",
+      const sdk = createNylonPay({        apiKey: "npk_test",
         apiSecret: "nps_test",
       });
 
@@ -424,9 +372,7 @@ describe("createNylonPay", () => {
     });
 
     it("throws when getTransaction has neither id nor reference", async () => {
-      const sdk = createNylonPay({
-        environment: "sandbox",
-        apiKey: "npk_test",
+      const sdk = createNylonPay({        apiKey: "npk_test",
         apiSecret: "nps_test",
       });
 
@@ -436,9 +382,7 @@ describe("createNylonPay", () => {
     });
 
     it("throws when createInvoice has more than 50 items", async () => {
-      const sdk = createNylonPay({
-        environment: "sandbox",
-        apiKey: "npk_test",
+      const sdk = createNylonPay({        apiKey: "npk_test",
         apiSecret: "nps_test",
       });
 
@@ -459,9 +403,7 @@ describe("createNylonPay", () => {
     });
 
     it("throws when createInvoice has negative item quantity", async () => {
-      const sdk = createNylonPay({
-        environment: "sandbox",
-        apiKey: "npk_test",
+      const sdk = createNylonPay({        apiKey: "npk_test",
         apiSecret: "nps_test",
       });
 
@@ -480,9 +422,7 @@ describe("createNylonPay", () => {
     it("returns Err result on transport error instead of throwing", async () => {
       mockSend.mockResolvedValue(Err("Server unavailable"));
 
-      const sdk = createNylonPay({
-        environment: "sandbox",
-        apiKey: "npk_test",
+      const sdk = createNylonPay({        apiKey: "npk_test",
         apiSecret: "nps_test",
       });
 
@@ -499,9 +439,7 @@ describe("createNylonPay", () => {
         Err(JSON.stringify({ code: "RATE_LIMITED", message: "Too many requests" })),
       );
 
-      const sdk = createNylonPay({
-        environment: "sandbox",
-        apiKey: "npk_test",
+      const sdk = createNylonPay({        apiKey: "npk_test",
         apiSecret: "nps_test",
       });
 

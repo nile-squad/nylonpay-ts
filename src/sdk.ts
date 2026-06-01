@@ -29,7 +29,6 @@ import type {
 export type { NylonPaySdk } from "./types";
 
 type ResolvedConfig = {
-  environment: string;
   apiKey: string;
   apiSecret: string;
   baseUrl: string;

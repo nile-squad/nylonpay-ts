@@ -7,7 +7,6 @@
  * import { createNylonPay } from "@nylonpay/sdk";
  *
  * export const nylonpay = createNylonPay({
- *   environment: "live",
  *   apiKey: process.env.NYLONPAY_API_KEY!,
  *   apiSecret: process.env.NYLONPAY_API_SECRET!,
  * });
@@ -28,7 +27,7 @@ import {
 /**
  * Create a Nylon Pay SDK instance.
  *
- * @param config - SDK configuration with apiKey, apiSecret, environment
+ * @param config - SDK configuration with apiKey and apiSecret
  * @returns SDK instance with all payment operations
  *
  * @throws Error if required config is missing or invalid
@@ -46,15 +45,8 @@ export function createNylonPay(config: NylonPayConfig): NylonPaySdk {
   if (!config.apiSecret.startsWith("nps_")) {
     throw new Error('apiSecret must start with "nps_"');
   }
-  if (
-    !config.environment ||
-    (config.environment !== "sandbox" && config.environment !== "live")
-  ) {
-    throw new Error('environment must be "sandbox" or "live"');
-  }
 
   const resolvedConfig = {
-    environment: config.environment,
     apiKey: config.apiKey,
     apiSecret: config.apiSecret,
     baseUrl: config.baseUrl ?? DEFAULT_BASE_URL,

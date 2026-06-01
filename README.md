@@ -16,7 +16,6 @@ npm install @nylonpay/sdk
 import { createNylonPay } from "@nylonpay/sdk";
 
 const nylonpay = createNylonPay({
-  environment: "live",
   apiKey: "npk_...",
   apiSecret: "nps_...",
 });
@@ -34,9 +33,11 @@ payment.on("failed", ({ error }) => notifyCustomer(error));
 
 ## Configuration
 
+> Test vs. live mode is selected by your API key — a sandbox key routes to test
+> providers, a live key processes real money. There is no `environment` option.
+
 | Option | Required | Default | Description |
 |---|---|---|---|
-| `environment` | Yes | | `"sandbox"` or `"live"` |
 | `apiKey` | Yes | | Must start with `npk_` |
 | `apiSecret` | Yes | | Must start with `nps_` |
 | `baseUrl` | No | `https://api.nylonpay.io/api/services` | API endpoint |

@@ -1,13 +1,6 @@
 import type { Result } from 'slang-ts';
 
 /**
- * SDK environment selector. Sandbox mode lets merchants test integrations
- * without affecting live transactions or limits. Live mode processes real
- * money and counts toward monthly volume limits.
- */
-export type SdkEnvironment = "sandbox" | "live";
-
-/**
  * Lifecycle states a transaction can occupy. Merchants use these to drive
  * fulfillment logic: trigger order completion on "successful", notify
  * customer on "failed", release inventory on "cancelled".
@@ -268,9 +261,11 @@ export type WebhookPayload = {
  * SDK configuration supplied by the merchant at initialization.
  * All timeouts and retry limits are configurable for different
  * network environments.
+ *
+ * Test vs. live mode is determined by the API key, not by config — a sandbox
+ * key routes to test providers, a live key processes real money.
  */
 export type NylonPayConfig = {
-  environment: SdkEnvironment;
   apiKey: string;
   apiSecret: string;
   baseUrl?: string;

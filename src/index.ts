@@ -11,7 +11,6 @@
  * import { createNylonPay } from "@nylonpay/sdk";
  *
  * const nylonpay = createNylonPay({
- *   environment: "live",
  *   apiKey: "npk_...",
  *   apiSecret: "nps_...",
  * });
@@ -45,7 +44,7 @@ export type { NylonPaySdk } from "./types";
 export type { PaymentInstance } from "./types";
 
 // Configuration type
-export type { NylonPayConfig, SdkEnvironment } from "./types";
+export type { NylonPayConfig } from "./types";
 
 // Request/Response types
 export type {

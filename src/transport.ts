@@ -73,15 +73,22 @@ function buildEnvelope({
   };
 }
 
-/** Build auth headers for a request envelope. */
+/**
+ * Build auth headers for a request.
+ *
+ * The signature is computed over the inner `payload` (the operation input plus
+ * `_fingerprint`), NOT the full Nile envelope. This matches the backend, which
+ * verifies the signature against the raw request payload — see the transport
+ * contract in docs/public/sdk-spec.md and backend verify-signature.ts.
+ */
 function buildAuthHeaders({
   apiKey,
   apiSecret,
-  envelope,
+  payload,
 }: {
   apiKey: string;
   apiSecret: string;
-  envelope: unknown;
+  payload: unknown;
 }): Record<string, string> {
   const nonce = generateNonce();
   const timestamp = createTimestamp();
@@ -89,7 +96,7 @@ function buildAuthHeaders({
     fingerprint: CACHED_FINGERPRINT,
     nonce,
     timestamp,
-    payload: envelope,
+    payload,
     secret: apiSecret,
   });
 
@@ -143,7 +150,12 @@ export function createTransport({
     request: TransportRequest,
   ): Promise<Result<T, string>> {
     const envelope = buildEnvelope(request);
-    const headers = buildAuthHeaders({ apiKey, apiSecret, envelope });
+    const signedPayload = (envelope as { payload: unknown }).payload;
+    const headers = buildAuthHeaders({
+      apiKey,
+      apiSecret,
+      payload: signedPayload,
+    });
     const bodyString = JSON.stringify(envelope);
 
     async function attempt(currentAttempt: number): Promise<Result<T, string>> {
