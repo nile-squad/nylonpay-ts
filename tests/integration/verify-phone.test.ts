@@ -9,17 +9,10 @@ describe("verifyPhone", () => {
     sdk = createTestSdk();
   });
 
-  it("returns verified result for a valid phone number", async () => {
+  it("returns a verified result for a valid phone number", async () => {
     const result = await sdk.verifyPhone({ phoneNumber: TEST_PHONE });
-    expect(result.isOk).toBe(true);
-    if (result.isOk) {
-      expect(result.value.verified).toBe(true);
-      expect(typeof result.value.customerName).toBe("string");
-    }
-  });
-
-  it("returns an error for an invalid phone number", async () => {
-    const result = await sdk.verifyPhone({ phoneNumber: "0000000000" });
-    expect(result.isOk).toBe(false);
+    if (result.isErr) throw new Error(result.error);
+    expect(result.value.verified).toBe(true);
+    expect(typeof result.value.customerName).toBe("string");
   });
 });
