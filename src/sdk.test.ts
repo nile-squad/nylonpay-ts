@@ -50,7 +50,11 @@ describe("createNylonPay", () => {
 
   describe("config validation", () => {
     it("creates SDK instance with valid config", () => {
-      const sdk = createNylonPay({ apiKey: "npk_test", apiSecret: "nps_test" });
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+      });
       expect(sdk).toBeDefined();
       expect(typeof sdk.collectPayment).toBe("function");
     });
@@ -80,7 +84,11 @@ describe("createNylonPay", () => {
     });
 
     it("applies default values correctly", () => {
-      createNylonPay({ apiKey: "npk_test", apiSecret: "nps_test" });
+      createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+      });
 
       expect(createTransport).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -98,7 +106,11 @@ describe("createNylonPay", () => {
         Ok({ reference: "test-ref", status: "pending" }),
       );
 
-      const sdk = createNylonPay({ apiKey: "npk_test", apiSecret: "nps_test" });
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+      });
 
       const instance = await sdk.collectPayment({
         amount: 1000,
@@ -115,7 +127,11 @@ describe("createNylonPay", () => {
         Ok({ reference: "auto-ref", status: "pending" }),
       );
 
-      const sdk = createNylonPay({ apiKey: "npk_test", apiSecret: "nps_test" });
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+      });
 
       await sdk.collectPayment({
         amount: 1000,
@@ -133,7 +149,11 @@ describe("createNylonPay", () => {
     it("collectPaymentAndResolve returns Transaction on success", async () => {
       mockSend.mockResolvedValue(Ok(mockTransaction));
 
-      const sdk = createNylonPay({ apiKey: "npk_test", apiSecret: "nps_test" });
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+      });
 
       const result = await sdk.collectPaymentAndResolve({
         amount: 1000,
@@ -153,7 +173,11 @@ describe("createNylonPay", () => {
         Ok({ reference: "payout-ref", status: "pending" }),
       );
 
-      const sdk = createNylonPay({ apiKey: "npk_test", apiSecret: "nps_test" });
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+      });
 
       const instance = await sdk.makePayout({
         amount: 1000,
@@ -170,7 +194,11 @@ describe("createNylonPay", () => {
       const payoutTx = { ...mockTransaction, type: "payout" as const };
       mockSend.mockResolvedValue(Ok(payoutTx));
 
-      const sdk = createNylonPay({ apiKey: "npk_test", apiSecret: "nps_test" });
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+      });
 
       const result = await sdk.makePayoutAndResolve({
         amount: 1000,
@@ -197,7 +225,11 @@ describe("createNylonPay", () => {
         }),
       );
 
-      const sdk = createNylonPay({ apiKey: "npk_test", apiSecret: "nps_test" });
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+      });
 
       const result = await sdk.getStatus({ reference: "test-ref" });
 
@@ -210,7 +242,11 @@ describe("createNylonPay", () => {
     it("getTransaction returns Transaction", async () => {
       mockSend.mockResolvedValue(Ok(mockTransaction));
 
-      const sdk = createNylonPay({ apiKey: "npk_test", apiSecret: "nps_test" });
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+      });
 
       const result = await sdk.getTransaction({ id: "txn-123" });
 
@@ -229,7 +265,11 @@ describe("createNylonPay", () => {
         }),
       );
 
-      const sdk = createNylonPay({ apiKey: "npk_test", apiSecret: "nps_test" });
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+      });
 
       const result = await sdk.verifyPhone({ phoneNumber: "+256700000000" });
 
@@ -250,7 +290,11 @@ describe("createNylonPay", () => {
         }),
       );
 
-      const sdk = createNylonPay({ apiKey: "npk_test", apiSecret: "nps_test" });
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+      });
 
       const result = await sdk.createInvoice({
         amount: 1000,
@@ -265,7 +309,11 @@ describe("createNylonPay", () => {
     });
 
     it("verifyWebhookSignature delegates to standalone function", () => {
-      const sdk = createNylonPay({ apiKey: "npk_test", apiSecret: "nps_test" });
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+      });
 
       const payload = JSON.stringify({ event: "test" });
       const secret = "whsec_test";
@@ -278,7 +326,11 @@ describe("createNylonPay", () => {
 
   describe("input validation", () => {
     it("throws on zero amount for collectPayment", async () => {
-      const sdk = createNylonPay({ apiKey: "npk_test", apiSecret: "nps_test" });
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+      });
 
       await expect(
         sdk.collectPayment({
@@ -291,7 +343,11 @@ describe("createNylonPay", () => {
     });
 
     it("throws on negative amount for collectPayment", async () => {
-      const sdk = createNylonPay({ apiKey: "npk_test", apiSecret: "nps_test" });
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+      });
 
       await expect(
         sdk.collectPayment({
@@ -304,7 +360,11 @@ describe("createNylonPay", () => {
     });
 
     it("throws when customer.phoneNumber is empty", async () => {
-      const sdk = createNylonPay({ apiKey: "npk_test", apiSecret: "nps_test" });
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+      });
 
       await expect(
         sdk.collectPayment({
@@ -317,7 +377,11 @@ describe("createNylonPay", () => {
     });
 
     it("throws when description is empty", async () => {
-      const sdk = createNylonPay({ apiKey: "npk_test", apiSecret: "nps_test" });
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+      });
 
       await expect(
         sdk.collectPayment({
@@ -330,7 +394,11 @@ describe("createNylonPay", () => {
     });
 
     it("throws when method is bank without bank details", async () => {
-      const sdk = createNylonPay({ apiKey: "npk_test", apiSecret: "nps_test" });
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+      });
 
       await expect(
         sdk.collectPayment({
@@ -344,7 +412,11 @@ describe("createNylonPay", () => {
     });
 
     it("throws when getTransaction has neither id nor reference", async () => {
-      const sdk = createNylonPay({ apiKey: "npk_test", apiSecret: "nps_test" });
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+      });
 
       await expect(sdk.getTransaction({})).rejects.toThrow(
         "id or reference is required",
@@ -352,7 +424,11 @@ describe("createNylonPay", () => {
     });
 
     it("throws when createInvoice has more than 50 items", async () => {
-      const sdk = createNylonPay({ apiKey: "npk_test", apiSecret: "nps_test" });
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+      });
 
       const items = Array.from({ length: 51 }, (_, i) => ({
         name: `Item ${i}`,
@@ -371,7 +447,11 @@ describe("createNylonPay", () => {
     });
 
     it("throws when createInvoice has negative item quantity", async () => {
-      const sdk = createNylonPay({ apiKey: "npk_test", apiSecret: "nps_test" });
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+      });
 
       await expect(
         sdk.createInvoice({
@@ -388,7 +468,11 @@ describe("createNylonPay", () => {
     it("returns Err result on transport error instead of throwing", async () => {
       mockSend.mockResolvedValue(Err("Server unavailable"));
 
-      const sdk = createNylonPay({ apiKey: "npk_test", apiSecret: "nps_test" });
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+      });
 
       const result = await sdk.getStatus({ reference: "test-ref" });
 
@@ -408,7 +492,11 @@ describe("createNylonPay", () => {
         ),
       );
 
-      const sdk = createNylonPay({ apiKey: "npk_test", apiSecret: "nps_test" });
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+      });
 
       const result = await sdk.getStatus({ reference: "test-ref" });
 

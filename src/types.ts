@@ -275,6 +275,8 @@ export type NylonPayConfig = {
   maxPollDurationMs?: number;
   maxPollAttempts?: number;
   fetch?: typeof globalThis.fetch;
+  /** Force a new instance even if one already exists for this key+url pair. */
+  force?: boolean;
 };
 
 /**

@@ -2,13 +2,17 @@
  * Factory function to create a Nylon Pay SDK instance.
  * This is the main entry point for merchants.
  *
+ * Calling createNylonPay with the same apiKey and baseUrl returns the same
+ * instance (singleton per key+url pair). Pass { force: true } to create a
+ * fresh instance and replace the cached one.
+ *
  * @example
  * ```ts
  * import { createNylonPay } from "@nile-squad/nylonpay-ts";
  *
  * export const nylonpay = createNylonPay({
- *   apiKey: process.env.NYLONPAY_API_KEY!,
- *   apiSecret: process.env.NYLONPAY_API_SECRET!,
+ *   apiKey: "npk_...",
+ *   apiSecret: "nps_...",
  * });
  * ```
  */
@@ -24,8 +28,14 @@ import {
 } from "./sdk.config";
 import type { NylonPayConfig } from "./types";
 
+const instances = new Map<string, NylonPaySdk>();
+
 /**
  * Create a Nylon Pay SDK instance.
+ *
+ * Returns the same instance for the same apiKey + baseUrl combination unless
+ * { force: true } is passed. Use your test keys for sandbox, production keys
+ * for live.
  *
  * @param config - SDK configuration with apiKey and apiSecret
  * @returns SDK instance with all payment operations
@@ -46,10 +56,18 @@ export function createNylonPay(config: NylonPayConfig): NylonPaySdk {
     throw new Error('apiSecret must start with "nps_"');
   }
 
+  const baseUrl = config.baseUrl ?? DEFAULT_BASE_URL;
+  const instanceKey = `${config.apiKey}:${baseUrl}`;
+
+  if (!config.force) {
+    const existing = instances.get(instanceKey);
+    if (existing) return existing;
+  }
+
   const resolvedConfig = {
     apiKey: config.apiKey,
     apiSecret: config.apiSecret,
-    baseUrl: config.baseUrl ?? DEFAULT_BASE_URL,
+    baseUrl,
     timeoutMs: config.timeoutMs ?? DEFAULT_TIMEOUT_MS,
     maxRetries: config.maxRetries ?? DEFAULT_MAX_RETRIES,
     maxPollIntervalMs: config.maxPollIntervalMs ?? DEFAULT_MAX_POLL_INTERVAL_MS,
@@ -58,5 +76,7 @@ export function createNylonPay(config: NylonPayConfig): NylonPaySdk {
     fetch: config.fetch ?? globalThis.fetch.bind(globalThis),
   };
 
-  return createSdkInstance(resolvedConfig);
+  const instance = createSdkInstance(resolvedConfig);
+  instances.set(instanceKey, instance);
+  return instance;
 }
