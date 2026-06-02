@@ -196,6 +196,19 @@ payment.off("success", handler);
 const tx = await payment.wait();
 ```
 
+Use `safeTry` from `slang-ts` to handle the promise without try/catch:
+
+```ts
+import { safeTry } from "slang-ts";
+
+const result = await safeTry(() => payment.wait());
+if (result.isOk) {
+  console.log("paid:", result.value.reference);
+} else {
+  console.log("failed or timed out:", result.error);
+}
+```
+
 ## Error Handling
 
 All operations return `Result<T, string>` from [slang-ts](https://github.com/nile-squad/slang-ts). Use `parseError` to get structured error objects.
@@ -207,7 +220,7 @@ const result = await nylonpay.getStatus({ reference: "ORDER-123" });
 if (!result.isOk) {
   const error = parseError(result.error);
   if (error.retryable) {
-    // Retry the request
+    // retry
   }
 }
 ```
