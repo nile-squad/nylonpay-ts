@@ -644,18 +644,18 @@ export interface PaymentInstance {
 
   /**
    * Block until the transaction reaches a terminal state. Resolves with
-   * the full {@link Transaction} on success. Rejects on failure,
-   * cancellation, or polling error.
+   * the full {@link Transaction} on success, or `null` on failure,
+   * cancellation, or polling error. Never rejects.
    *
    * @example
    * ```ts
-   * try {
-   *   const tx = await payment.wait();
+   * const tx = await payment.wait();
+   * if (tx) {
    *   console.log("Paid:", tx.amount, tx.currency);
-   * } catch (err) {
-   *   console.error("Payment did not succeed:", err.message);
+   * } else {
+   *   console.error("Payment did not succeed");
    * }
    * ```
    */
-  wait(): Promise<Transaction>;
+  wait(): Promise<Transaction | null>;
 }

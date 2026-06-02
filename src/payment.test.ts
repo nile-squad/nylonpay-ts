@@ -343,7 +343,7 @@ describe("createPaymentInstance", () => {
       expect(result.status).toBe("successful");
     });
 
-    it("rejects on failure", async () => {
+    it("resolves null on failure", async () => {
       const deps = createMockDeps();
       const failedTx = { ...mockTransaction, status: "failed" as const };
       deps.fetchStatus.mockResolvedValue(
@@ -363,13 +363,11 @@ describe("createPaymentInstance", () => {
       );
 
       const waitPromise = instance.wait();
-      // Attach rejection handler before advancing timers to avoid unhandled rejection
-      const rejection = expect(waitPromise).rejects.toThrow("Payment failed");
       await vi.advanceTimersByTimeAsync(10);
-      await rejection;
+      expect(await waitPromise).toBeNull();
     });
 
-    it("rejects on cancellation", async () => {
+    it("resolves null on cancellation", async () => {
       const deps = createMockDeps();
       const cancelledTx = {
         ...mockTransaction,
@@ -392,13 +390,11 @@ describe("createPaymentInstance", () => {
       );
 
       const waitPromise = instance.wait();
-      const rejection =
-        expect(waitPromise).rejects.toThrow("Payment cancelled");
       await vi.advanceTimersByTimeAsync(10);
-      await rejection;
+      expect(await waitPromise).toBeNull();
     });
 
-    it("rejects on error", async () => {
+    it("resolves null on error", async () => {
       const deps = createMockDeps();
       deps.fetchStatus.mockResolvedValue(Err("Network failure"));
 
@@ -408,9 +404,8 @@ describe("createPaymentInstance", () => {
       );
 
       const waitPromise = instance.wait();
-      const rejection = expect(waitPromise).rejects.toThrow("Network failure");
       await vi.advanceTimersByTimeAsync(10);
-      await rejection;
+      expect(await waitPromise).toBeNull();
     });
 
     it("works when called after terminal state already reached", async () => {

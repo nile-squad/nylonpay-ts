@@ -65,6 +65,16 @@ const TERMINAL_STATES = new Set<TransactionStatus>([
 ]);
 
 /**
+ * Normalise raw backend status strings to TransactionStatus.
+ * The backend may return "completed" for successful payments — map it to
+ * "successful" so SDK events fire correctly.
+ */
+function normalizeStatus(raw: string): TransactionStatus {
+  if (raw === "completed") return "successful";
+  return raw as TransactionStatus;
+}
+
+/**
  * Create a new payment instance.
  *
  * @param initialResponse - Response with reference and initial status
@@ -89,7 +99,7 @@ export function createPaymentInstance(
 ): PaymentInstance {
   const state: PaymentState = {
     reference: initialResponse.reference,
-    status: initialResponse.status,
+    status: normalizeStatus(initialResponse.status),
     transaction: null,
     pollingTimer: null,
     resolved: false,
@@ -135,7 +145,11 @@ export function createPaymentInstance(
       state.transaction = txResult.value;
       const event = statusToEvent(status);
       if (event) {
-        emitEvent(event);
+        const error =
+          status === "failed"
+            ? (state.transaction.failureReason ?? undefined)
+            : undefined;
+        emitEvent(event, error);
       }
     } else {
       emitEvent("error", `Failed to fetch transaction: ${txResult.error}`);
@@ -156,7 +170,7 @@ export function createPaymentInstance(
       return;
     }
 
-    const newStatus = response.status;
+    const newStatus = normalizeStatus(response.status);
     const oldStatus = state.status;
 
     state.status = newStatus;
@@ -245,9 +259,18 @@ export function createPaymentInstance(
 
   /**
    * Start polling for status updates.
+   * If the initial status is already terminal (e.g. sandbox resolves synchronously),
+   * emit the terminal event after a tick so handlers registered after instance
+   * creation still fire.
    * @internal
    */
   function startPolling(): void {
+    if (TERMINAL_STATES.has(state.status ?? "pending")) {
+      setTimeout(() => {
+        void handleTerminalState(state.status as TransactionStatus);
+      }, 0);
+      return;
+    }
     scheduleNextPoll();
   }
 
@@ -298,44 +321,38 @@ export function createPaymentInstance(
 
   /**
    * Wait for payment to reach a terminal state.
-   * Resolves on success, rejects on failure/cancel/error.
+   * Resolves with the full Transaction on success, null on failure/cancel/error.
+   * Never rejects — check the return value to determine outcome.
    */
-  function wait(): Promise<Transaction> {
-    return new Promise((resolve, reject) => {
+  function wait(): Promise<Transaction | null> {
+    return new Promise((resolve) => {
       if (state.resolved) {
-        if (state.status === "successful" && state.transaction) {
-          resolve(state.transaction);
-        } else {
-          reject(new Error(`Payment ${state.status ?? "error"}`));
-        }
+        resolve(
+          state.status === "successful" && state.transaction
+            ? state.transaction
+            : null,
+        );
         return;
       }
 
       function onSuccess(): void {
         cleanup();
-        if (state.transaction) {
-          resolve(state.transaction);
-        } else {
-          reject(
-            new Error("Payment successful but transaction data unavailable"),
-          );
-        }
+        resolve(state.transaction ?? null);
       }
 
       function onFailed(): void {
         cleanup();
-        reject(new Error("Payment failed"));
+        resolve(null);
       }
 
       function onCancelled(): void {
         cleanup();
-        reject(new Error("Payment cancelled"));
+        resolve(null);
       }
 
-      function onError(data: unknown): void {
+      function onError(): void {
         cleanup();
-        const eventData = data as EventData;
-        reject(new Error(eventData.error ?? "Payment error"));
+        resolve(null);
       }
 
       function cleanup(): void {
