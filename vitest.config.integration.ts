@@ -1,4 +1,3 @@
-import { loadEnv } from "vite";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
@@ -9,6 +8,6 @@ export default defineConfig({
     pool: "forks",
     poolOptions: { forks: { singleFork: true } },
     reporters: ["verbose"],
-    env: loadEnv("integration", process.cwd(), ""),
+    setupFiles: ["dotenv/config"],
   },
 });
