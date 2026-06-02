@@ -14,7 +14,7 @@ describe("collectPayment", () => {
     sdk = createTestSdk();
   });
 
-  it("initiates a payment and the backend creates the transaction", async () => {
+  it("I1: initiates a payment and the backend creates the transaction", async () => {
     const payment = await sdk.collectPayment({
       amount: RUN_AMOUNT,
       currency: "UGX",
@@ -45,7 +45,7 @@ describe("collectPayment", () => {
     expect(tx.value.reference).toBe(initiatedReference);
   });
 
-  it("getTransaction returns the full transaction record", async () => {
+  it("I2: getTransaction returns the full transaction record", async () => {
     if (!initiatedReference) return;
 
     const result = await sdk.getTransaction({ reference: initiatedReference });
@@ -54,7 +54,7 @@ describe("collectPayment", () => {
     expect(result.value.currency).toBe("UGX");
   });
 
-  it("reuses the same transaction for a repeated reference (idempotency)", async () => {
+  it("I3: reuses the same transaction for a repeated reference (idempotency)", async () => {
     const ref = `idem-${Date.now()}`;
     // Use a different amount to avoid the dup cache on the first call.
     const amount = RUN_AMOUNT + 1;

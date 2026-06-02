@@ -12,7 +12,7 @@ describe("makePayout", () => {
     sdk = createTestSdk();
   });
 
-  it("initiates a payout and the backend creates the transaction", async () => {
+  it("I4: initiates a payout and the backend creates the transaction", async () => {
     const payout = await sdk.makePayout({
       amount: RUN_AMOUNT,
       currency: "UGX",
@@ -45,7 +45,7 @@ describe("makePayout", () => {
     expect(tx.value.currency).toBe("UGX");
   });
 
-  it("getTransaction returns the payout record", async () => {
+  it("I5: getTransaction returns the payout record", async () => {
     if (!initiatedReference) return;
 
     const result = await sdk.getTransaction({ reference: initiatedReference });
@@ -54,7 +54,7 @@ describe("makePayout", () => {
     expect(result.value.type).toBe("payout");
   });
 
-  it("reuses the same transaction for a repeated reference (idempotency)", async () => {
+  it("I6: reuses the same transaction for a repeated reference (idempotency)", async () => {
     const ref = `payout-idem-${Date.now()}`;
     const amount = RUN_AMOUNT + 2;
 

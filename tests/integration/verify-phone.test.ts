@@ -9,7 +9,7 @@ describe("verifyPhone", () => {
     sdk = createTestSdk();
   });
 
-  it("returns a verified result for a valid phone number", async () => {
+  it("I7: returns a verified result for a valid phone number", async () => {
     const result = await sdk.verifyPhone({ phoneNumber: TEST_PHONE });
     if (result.isErr) throw new Error(result.error);
     expect(result.value.verified).toBe(true);
