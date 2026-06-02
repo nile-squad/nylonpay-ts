@@ -18,6 +18,7 @@ import type {
   NylonPaySdk,
   PaymentInstance,
   PhoneVerification,
+  SdkHooks,
   StatusResponse,
   Transaction,
   TransactionStatus,
@@ -38,6 +39,7 @@ type ResolvedConfig = {
   maxPollDurationMs: number;
   maxPollAttempts: number;
   fetch: typeof globalThis.fetch;
+  hooks?: SdkHooks;
 };
 
 /** Generate a random 15-character hex reference for idempotency. */
@@ -106,7 +108,12 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
       throw new Error('bank details are required when method is "bank"');
     }
 
-    const payload = { ...input, reference };
+    let payload = { ...input, reference };
+    if (config.hooks?.beforeCollect) {
+      const mutated = await config.hooks.beforeCollect(payload);
+      if (mutated != null) payload = mutated;
+    }
+
     const result = await transport.send<{
       reference: string;
       status: TransactionStatus;
@@ -114,6 +121,15 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
       action: SDK_ACTIONS.collectPayment,
       payload,
     });
+
+    if (config.hooks?.afterCollect) {
+      await config.hooks.afterCollect(
+        result.isOk
+          ? Ok({ reference: result.value.reference, status: result.value.status })
+          : Err(result.error),
+        payload,
+      );
+    }
 
     if (result.isOk) {
       return createPaymentInstance(result.value, commonDeps);
@@ -148,11 +164,25 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
       throw new Error('bank details are required when method is "bank"');
     }
 
-    const payload = { ...input, reference };
+    let payload = { ...input, reference };
+    if (config.hooks?.beforeCollect) {
+      const mutated = await config.hooks.beforeCollect(payload);
+      if (mutated != null) payload = mutated;
+    }
+
     const result = await transport.send<Transaction>({
       action: SDK_ACTIONS.collectPaymentAndResolve,
       payload,
     });
+
+    if (config.hooks?.afterCollect) {
+      await config.hooks.afterCollect(
+        result.isOk
+          ? Ok({ reference: result.value.reference, status: result.value.status })
+          : Err(result.error),
+        payload,
+      );
+    }
 
     if (result.isOk) {
       return Ok(result.value);
@@ -180,7 +210,12 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
       "destination.accountNumber",
     );
 
-    const payload = { ...input, reference };
+    let payload = { ...input, reference };
+    if (config.hooks?.beforePayout) {
+      const mutated = await config.hooks.beforePayout(payload);
+      if (mutated != null) payload = mutated;
+    }
+
     const result = await transport.send<{
       reference: string;
       status: TransactionStatus;
@@ -188,6 +223,15 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
       action: SDK_ACTIONS.makePayout,
       payload,
     });
+
+    if (config.hooks?.afterPayout) {
+      await config.hooks.afterPayout(
+        result.isOk
+          ? Ok({ reference: result.value.reference, status: result.value.status })
+          : Err(result.error),
+        payload,
+      );
+    }
 
     if (result.isOk) {
       return createPaymentInstance(result.value, commonDeps);
@@ -227,11 +271,25 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
       "destination.accountNumber",
     );
 
-    const payload = { ...input, reference };
+    let payload = { ...input, reference };
+    if (config.hooks?.beforePayout) {
+      const mutated = await config.hooks.beforePayout(payload);
+      if (mutated != null) payload = mutated;
+    }
+
     const result = await transport.send<Transaction>({
       action: SDK_ACTIONS.makePayoutAndResolve,
       payload,
     });
+
+    if (config.hooks?.afterPayout) {
+      await config.hooks.afterPayout(
+        result.isOk
+          ? Ok({ reference: result.value.reference, status: result.value.status })
+          : Err(result.error),
+        payload,
+      );
+    }
 
     if (result.isOk) {
       return Ok(result.value);

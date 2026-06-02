@@ -258,6 +258,57 @@ export type WebhookPayload = {
 };
 
 /**
+ * Called before a collect or payout payload is sent to the server.
+ * Receives the full input (reference already set). Return a mutated copy to
+ * override the payload, or return void/undefined to leave it unchanged.
+ * Async hooks are awaited before the transport call proceeds.
+ */
+export type BeforeCollectHook = (
+  input: CollectPaymentInput,
+) => CollectPaymentInput | void | Promise<CollectPaymentInput | void>;
+
+/**
+ * Called after every collect call (both fire-and-forget and resolve variants)
+ * regardless of outcome. Use for logging, analytics, or side-effects.
+ * The result is normalized to `{ reference, status }` across both variants.
+ * Return value is ignored.
+ */
+export type AfterCollectHook = (
+  result: Result<{ reference: string; status: string }, string>,
+  input: CollectPaymentInput,
+) => void | Promise<void>;
+
+/**
+ * Called before a payout payload is sent to the server.
+ * Same semantics as {@link BeforeCollectHook}.
+ */
+export type BeforePayoutHook = (
+  input: MakePayoutInput,
+) => MakePayoutInput | void | Promise<MakePayoutInput | void>;
+
+/**
+ * Called after every payout call (both fire-and-forget and resolve variants)
+ * regardless of outcome.
+ * Same semantics as {@link AfterCollectHook}.
+ */
+export type AfterPayoutHook = (
+  result: Result<{ reference: string; status: string }, string>,
+  input: MakePayoutInput,
+) => void | Promise<void>;
+
+/**
+ * Lifecycle hooks registered once at SDK creation. Each hook fires on every
+ * matching operation — use them for cross-cutting concerns like logging,
+ * audit trails, and payload enrichment.
+ */
+export type SdkHooks = {
+  beforeCollect?: BeforeCollectHook;
+  afterCollect?: AfterCollectHook;
+  beforePayout?: BeforePayoutHook;
+  afterPayout?: AfterPayoutHook;
+};
+
+/**
  * SDK configuration supplied by the merchant at initialization.
  * All timeouts and retry limits are configurable for different
  * network environments.
@@ -277,6 +328,8 @@ export type NylonPayConfig = {
   fetch?: typeof globalThis.fetch;
   /** Force a new instance even if one already exists for this key+url pair. */
   force?: boolean;
+  /** Lifecycle hooks for cross-cutting concerns (logging, enrichment, etc.). */
+  hooks?: SdkHooks;
 };
 
 /**

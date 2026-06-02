@@ -40,7 +40,11 @@ export { parseError } from "./transport";
 // Webhook types
 // Error type
 export type {
+  AfterCollectHook,
+  AfterPayoutHook,
   BankDetails,
+  BeforeCollectHook,
+  BeforePayoutHook,
   CollectPaymentInput,
   CreateInvoiceInput,
   Currency,
@@ -60,6 +64,7 @@ export type {
   PaymentMethod,
   PhoneVerification,
   SdkError,
+  SdkHooks,
   StatusResponse,
   Transaction,
   TransactionMode,

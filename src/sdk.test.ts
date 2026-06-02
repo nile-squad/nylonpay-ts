@@ -14,6 +14,7 @@ vi.mock("./transport", () => ({
     send: vi.fn(),
     parseError: vi.fn((error: string) => ({ code: "UNKNOWN", message: error })),
   })),
+  parseError: vi.fn((error: string) => ({ code: "UNKNOWN", message: error })),
 }));
 
 const mockTransaction: Transaction = {
@@ -461,6 +462,207 @@ describe("createNylonPay", () => {
           items: [{ name: "Item", quantity: -1, unitPrice: 100 }],
         }),
       ).rejects.toThrow("item quantity must be a positive integer");
+    });
+  });
+
+  describe("hooks", () => {
+    const baseCollectInput = {
+      amount: 1000,
+      currency: "UGX" as const,
+      customer: { name: "Test", phoneNumber: "+256700000000" },
+      description: "Test payment",
+    };
+    const basePayoutInput = {
+      amount: 1000,
+      currency: "UGX" as const,
+      customer: { name: "Test", phoneNumber: "+256700000000" },
+      destination: { accountHolderName: "Test", accountNumber: "1234567890" },
+      description: "Test payout",
+    };
+
+    it("beforeCollect is called with the payload before sending", async () => {
+      const beforeCollect = vi.fn((input) => input);
+      mockSend.mockResolvedValue(
+        Ok({ reference: "test-ref", status: "pending" }),
+      );
+
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+        hooks: { beforeCollect },
+      });
+
+      await sdk.collectPayment(baseCollectInput);
+
+      expect(beforeCollect).toHaveBeenCalledOnce();
+      expect(beforeCollect.mock.calls[0][0]).toMatchObject({
+        amount: 1000,
+        description: "Test payment",
+      });
+    });
+
+    it("beforeCollect mutated return value is sent to transport", async () => {
+      mockSend.mockResolvedValue(
+        Ok({ reference: "test-ref", status: "pending" }),
+      );
+
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+        hooks: {
+          beforeCollect: (input) => ({
+            ...input,
+            metadata: { enriched: "true" },
+          }),
+        },
+      });
+
+      await sdk.collectPayment(baseCollectInput);
+
+      const sentPayload = mockSend.mock.calls[0][0].payload;
+      expect(sentPayload.metadata).toEqual({ enriched: "true" });
+    });
+
+    it("afterCollect is called with Ok result on success", async () => {
+      const afterCollect = vi.fn();
+      mockSend.mockResolvedValue(
+        Ok({ reference: "test-ref", status: "pending" }),
+      );
+
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+        hooks: { afterCollect },
+      });
+
+      await sdk.collectPayment(baseCollectInput);
+
+      expect(afterCollect).toHaveBeenCalledOnce();
+      const [result] = afterCollect.mock.calls[0];
+      expect(result.isOk).toBe(true);
+      expect(result.value.reference).toBe("test-ref");
+    });
+
+    it("afterCollect is called with Err result on transport failure", async () => {
+      const afterCollect = vi.fn();
+      mockSend.mockResolvedValue(Err("Server error"));
+
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+        hooks: { afterCollect },
+      });
+
+      await sdk.collectPayment(baseCollectInput);
+
+      expect(afterCollect).toHaveBeenCalledOnce();
+      const [result] = afterCollect.mock.calls[0];
+      expect(result.isErr).toBe(true);
+    });
+
+    it("afterCollect fires for collectPaymentAndResolve too", async () => {
+      const afterCollect = vi.fn();
+      mockSend.mockResolvedValue(Ok(mockTransaction));
+
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+        hooks: { afterCollect },
+      });
+
+      await sdk.collectPaymentAndResolve(baseCollectInput);
+
+      expect(afterCollect).toHaveBeenCalledOnce();
+    });
+
+    it("beforePayout mutated return value is sent to transport", async () => {
+      mockSend.mockResolvedValue(
+        Ok({ reference: "payout-ref", status: "pending" }),
+      );
+
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+        hooks: {
+          beforePayout: (input) => ({
+            ...input,
+            metadata: { source: "api" },
+          }),
+        },
+      });
+
+      await sdk.makePayout(basePayoutInput);
+
+      const sentPayload = mockSend.mock.calls[0][0].payload;
+      expect(sentPayload.metadata).toEqual({ source: "api" });
+    });
+
+    it("afterPayout is called with Ok result on success", async () => {
+      const afterPayout = vi.fn();
+      mockSend.mockResolvedValue(
+        Ok({ reference: "payout-ref", status: "pending" }),
+      );
+
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+        hooks: { afterPayout },
+      });
+
+      await sdk.makePayout(basePayoutInput);
+
+      expect(afterPayout).toHaveBeenCalledOnce();
+      const [result] = afterPayout.mock.calls[0];
+      expect(result.isOk).toBe(true);
+      expect(result.value.reference).toBe("payout-ref");
+    });
+
+    it("afterPayout fires for makePayoutAndResolve too", async () => {
+      const afterPayout = vi.fn();
+      const payoutTx = { ...mockTransaction, type: "payout" as const };
+      mockSend.mockResolvedValue(Ok(payoutTx));
+
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+        hooks: { afterPayout },
+      });
+
+      await sdk.makePayoutAndResolve(basePayoutInput);
+
+      expect(afterPayout).toHaveBeenCalledOnce();
+    });
+
+    it("async beforeCollect is awaited before transport send", async () => {
+      const order: string[] = [];
+      mockSend.mockImplementation(async () => {
+        order.push("transport");
+        return Ok({ reference: "test-ref", status: "pending" });
+      });
+
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+        hooks: {
+          beforeCollect: async (input) => {
+            order.push("beforeCollect");
+            return input;
+          },
+        },
+      });
+
+      await sdk.collectPayment(baseCollectInput);
+
+      expect(order).toEqual(["beforeCollect", "transport"]);
     });
   });
 

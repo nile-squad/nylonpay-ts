@@ -74,6 +74,7 @@ export function createNylonPay(config: NylonPayConfig): NylonPaySdk {
     maxPollDurationMs: config.maxPollDurationMs ?? DEFAULT_MAX_POLL_DURATION_MS,
     maxPollAttempts: config.maxPollAttempts ?? DEFAULT_MAX_POLL_ATTEMPTS,
     fetch: config.fetch ?? globalThis.fetch.bind(globalThis),
+    hooks: config.hooks,
   };
 
   const instance = createSdkInstance(resolvedConfig);
