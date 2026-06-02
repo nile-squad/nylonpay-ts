@@ -111,7 +111,8 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
     let payload = { ...input, reference };
     if (config.hooks?.beforeCollect) {
       const mutated = await config.hooks.beforeCollect(payload);
-      if (mutated != null) payload = { ...mutated, reference: mutated.reference ?? reference };
+      if (mutated != null)
+        payload = { ...mutated, reference: mutated.reference ?? reference };
     }
 
     const result = await transport.send<{
@@ -125,7 +126,10 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
     if (config.hooks?.afterCollect) {
       await config.hooks.afterCollect(
         result.isOk
-          ? Ok({ reference: result.value.reference, status: result.value.status })
+          ? Ok({
+              reference: result.value.reference,
+              status: result.value.status,
+            })
           : Err(result.error),
         payload,
       );
@@ -167,7 +171,8 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
     let payload = { ...input, reference };
     if (config.hooks?.beforeCollect) {
       const mutated = await config.hooks.beforeCollect(payload);
-      if (mutated != null) payload = { ...mutated, reference: mutated.reference ?? reference };
+      if (mutated != null)
+        payload = { ...mutated, reference: mutated.reference ?? reference };
     }
 
     const result = await transport.send<Transaction>({
@@ -178,7 +183,10 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
     if (config.hooks?.afterCollect) {
       await config.hooks.afterCollect(
         result.isOk
-          ? Ok({ reference: result.value.reference, status: result.value.status })
+          ? Ok({
+              reference: result.value.reference,
+              status: result.value.status,
+            })
           : Err(result.error),
         payload,
       );
@@ -213,7 +221,8 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
     let payload = { ...input, reference };
     if (config.hooks?.beforePayout) {
       const mutated = await config.hooks.beforePayout(payload);
-      if (mutated != null) payload = { ...mutated, reference: mutated.reference ?? reference };
+      if (mutated != null)
+        payload = { ...mutated, reference: mutated.reference ?? reference };
     }
 
     const result = await transport.send<{
@@ -227,7 +236,10 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
     if (config.hooks?.afterPayout) {
       await config.hooks.afterPayout(
         result.isOk
-          ? Ok({ reference: result.value.reference, status: result.value.status })
+          ? Ok({
+              reference: result.value.reference,
+              status: result.value.status,
+            })
           : Err(result.error),
         payload,
       );
@@ -274,7 +286,8 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
     let payload = { ...input, reference };
     if (config.hooks?.beforePayout) {
       const mutated = await config.hooks.beforePayout(payload);
-      if (mutated != null) payload = { ...mutated, reference: mutated.reference ?? reference };
+      if (mutated != null)
+        payload = { ...mutated, reference: mutated.reference ?? reference };
     }
 
     const result = await transport.send<Transaction>({
@@ -285,7 +298,10 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
     if (config.hooks?.afterPayout) {
       await config.hooks.afterPayout(
         result.isOk
-          ? Ok({ reference: result.value.reference, status: result.value.status })
+          ? Ok({
+              reference: result.value.reference,
+              status: result.value.status,
+            })
           : Err(result.error),
         payload,
       );

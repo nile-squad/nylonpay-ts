@@ -265,7 +265,7 @@ export type WebhookPayload = {
  */
 export type BeforeCollectHook = (
   input: CollectPaymentInput,
-) => CollectPaymentInput | void | Promise<CollectPaymentInput | void>;
+) => CollectPaymentInput | undefined | Promise<CollectPaymentInput | undefined>;
 
 /**
  * Called after every collect call (both fire-and-forget and resolve variants)
@@ -284,7 +284,7 @@ export type AfterCollectHook = (
  */
 export type BeforePayoutHook = (
   input: MakePayoutInput,
-) => MakePayoutInput | void | Promise<MakePayoutInput | void>;
+) => MakePayoutInput | undefined | Promise<MakePayoutInput | undefined>;
 
 /**
  * Called after every payout call (both fire-and-forget and resolve variants)
