@@ -17,6 +17,15 @@ export const DEFAULT_MAX_POLL_DURATION_MS = 300_000;
 /** Default max polling attempts before giving up */
 export const DEFAULT_MAX_POLL_ATTEMPTS = 150;
 
+/** Stream status updates over SSE by default (with polling fallback). */
+export const DEFAULT_STREAMING = true;
+
+/** Path of the SDK status stream route (lives at the host root, not under the action path). */
+export const STREAM_PATH = "/sse/transaction";
+
+/** Max stream reconnect attempts before falling back to polling. */
+export const MAX_STREAM_RECONNECTS = 2;
+
 /** Nile.js service name for all SDK operations */
 export const SDK_SERVICE = "sdk";
 

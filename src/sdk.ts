@@ -38,6 +38,7 @@ type ResolvedConfig = {
   maxPollIntervalMs: number;
   maxPollDurationMs: number;
   maxPollAttempts: number;
+  streaming: boolean;
   fetch: typeof globalThis.fetch;
   hooks?: SdkHooks;
 };
@@ -47,17 +48,26 @@ function generateReference(): string {
   return randomBytes(16).toString("hex").slice(0, 15);
 }
 
+/**
+ * Throw a categorized input-validation error. Keeps thrown errors consistent
+ * with transport-init failures so a merchant's `catch (e)` can always read
+ * `e.category` (here always `"validation"`).
+ */
+function throwValidation(message: string): never {
+  throw createSdkError({ category: "validation", message });
+}
+
 /** Validate that amount is a positive integer. */
 function validateAmount(amount: number): void {
   if (!Number.isInteger(amount) || amount <= 0) {
-    throw new Error("amount must be a positive integer");
+    throwValidation("amount must be a positive integer");
   }
 }
 
 /** Validate that a string value is non-empty. */
 function validateNonEmpty(value: string, fieldName: string): void {
   if (!value || value.trim() === "") {
-    throw new Error(`${fieldName} is required`);
+    throwValidation(`${fieldName} is required`);
   }
 }
 
@@ -89,6 +99,8 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
     pollIntervalMs: config.maxPollIntervalMs,
     maxPollDuration: config.maxPollDurationMs,
     maxPollAttempts: config.maxPollAttempts,
+    streaming: config.streaming,
+    openStream: config.streaming ? transport.openStream : undefined,
   };
 
   /**
@@ -105,7 +117,7 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
     validateNonEmpty(input.customer.phoneNumber, "customer.phoneNumber");
     validateNonEmpty(input.description, "description");
     if (input.method === "bank" && !input.bank) {
-      throw new Error('bank details are required when method is "bank"');
+      throwValidation('bank details are required when method is "bank"');
     }
 
     let payload = { ...input, reference };
@@ -158,7 +170,7 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
     validateNonEmpty(input.customer.phoneNumber, "customer.phoneNumber");
     validateNonEmpty(input.description, "description");
     if (input.method === "bank" && !input.bank) {
-      throw new Error('bank details are required when method is "bank"');
+      throwValidation('bank details are required when method is "bank"');
     }
 
     let payload = { ...input, reference };
@@ -326,7 +338,7 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
     input: GetTransactionInput,
   ): Promise<Result<Transaction, string>> {
     if (!input.id && !input.reference) {
-      throw new Error("id or reference is required");
+      throwValidation("id or reference is required");
     }
 
     const result = await transport.send<Transaction>({
@@ -373,14 +385,14 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
 
     if (input.items) {
       if (input.items.length > 50) {
-        throw new Error("items must not exceed 50");
+        throwValidation("items must not exceed 50");
       }
       for (const item of input.items) {
         if (!Number.isInteger(item.quantity) || item.quantity <= 0) {
-          throw new Error("item quantity must be a positive integer");
+          throwValidation("item quantity must be a positive integer");
         }
         if (!Number.isInteger(item.unitPrice) || item.unitPrice <= 0) {
-          throw new Error("item unitPrice must be a positive integer");
+          throwValidation("item unitPrice must be a positive integer");
         }
       }
     }

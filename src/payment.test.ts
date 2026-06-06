@@ -541,4 +541,84 @@ describe("createPaymentInstance", () => {
       expect(() => instance.off("success", handler)).not.toThrow();
     });
   });
+
+  describe("SSE streaming", () => {
+    type StreamCb = {
+      onStatus: (s: unknown) => void;
+      onError: (m: string) => void;
+      onClose: () => void;
+    };
+
+    function makeStreamDeps() {
+      const deps = createMockDeps();
+      const close = vi.fn();
+      let callbacks: StreamCb | null = null;
+      const openStream = vi.fn((input: StreamCb) => {
+        callbacks = input;
+        return { close };
+      });
+      return { deps, openStream, close, getCb: () => callbacks as StreamCb };
+    }
+
+    const status = (s: string) => ({
+      reference: "test-ref",
+      status: s,
+      amount: 1000,
+      currency: "UGX",
+      updatedAt: "2024-01-01T00:00:01Z",
+    });
+
+    it("drives events from the stream without polling", async () => {
+      const { deps, openStream, getCb } = makeStreamDeps();
+      deps.fetchTransaction.mockResolvedValue(Ok(mockTransaction));
+      const processing = vi.fn();
+      const success = vi.fn();
+
+      const instance = createPaymentInstance(
+        { reference: "test-ref", status: "pending" },
+        { ...deps, streaming: true, openStream },
+      );
+      instance.on("processing", processing);
+      instance.on("success", success);
+
+      expect(openStream).toHaveBeenCalledTimes(1);
+
+      getCb().onStatus(status("processing"));
+      await vi.advanceTimersByTimeAsync(1);
+      expect(processing).toHaveBeenCalled();
+      expect(deps.fetchStatus).not.toHaveBeenCalled();
+
+      getCb().onStatus(status("successful"));
+      await vi.advanceTimersByTimeAsync(1);
+      expect(success).toHaveBeenCalled();
+    });
+
+    it("falls back to polling after the stream fails", async () => {
+      const { deps, openStream, getCb } = makeStreamDeps();
+      deps.fetchStatus.mockResolvedValue(Ok(status("successful")));
+      deps.fetchTransaction.mockResolvedValue(Ok(mockTransaction));
+      const success = vi.fn();
+
+      const instance = createPaymentInstance(
+        { reference: "test-ref", status: "pending" },
+        // Longer duration cap so the reconnect backoffs don't exhaust it before
+        // the polling fallback runs.
+        { ...deps, streaming: true, openStream, maxPollDuration: 60_000 },
+      );
+      instance.on("success", success);
+
+      // MAX_STREAM_RECONNECTS = 2: two reconnects, the third failure falls back.
+      getCb().onError("boom");
+      await vi.advanceTimersByTimeAsync(1000);
+      getCb().onError("boom");
+      await vi.advanceTimersByTimeAsync(2000);
+      getCb().onError("boom");
+      await vi.advanceTimersByTimeAsync(20);
+      await vi.advanceTimersByTimeAsync(5);
+
+      expect(openStream).toHaveBeenCalledTimes(3);
+      expect(deps.fetchStatus).toHaveBeenCalled();
+      expect(success).toHaveBeenCalled();
+    });
+  });
 });

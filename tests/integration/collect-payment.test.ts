@@ -71,4 +71,44 @@ describe("collectPayment", () => {
       throw new Error(`idempotency: first call failed silently: ${tx.error}`);
     expect(tx.value.reference).toBe(ref);
   });
+
+  it("I17: collectPaymentAndResolve returns the full transaction shape", async () => {
+    const result = await sdk.collectPaymentAndResolve({
+      amount: RUN_AMOUNT + 3,
+      currency: "UGX",
+      customer: { name: "Integration Test", phoneNumber: TEST_PHONE },
+      description: "Resolve shape test",
+    });
+    if (result.isErr) throw new Error(result.error);
+
+    const tx = result.value;
+    expect(tx.id).toBeTruthy();
+    expect(typeof tx.amount).toBe("number");
+    expect(tx.reference).toBeTruthy();
+    expect(tx.type).toBe("collection");
+    expect(tx.metadata).toBeTypeOf("object");
+    // failureReason is populated only when the transaction failed.
+    if (tx.status === "failed") {
+      expect(typeof tx.failureReason).toBe("string");
+    } else {
+      expect(tx.failureReason).toBeNull();
+    }
+  }, 30_000);
+
+  it("I18: metadata round-trips through getTransaction", async () => {
+    const ref = `meta-${Date.now()}`;
+    await sdk.collectPayment({
+      amount: RUN_AMOUNT + 4,
+      currency: "UGX",
+      customer: { name: "Integration Test", phoneNumber: TEST_PHONE },
+      description: "Metadata test",
+      reference: ref,
+      metadata: { orderId: "ORD-42", source: "integration" },
+    });
+
+    const tx = await sdk.getTransaction({ reference: ref });
+    if (tx.isErr) throw new Error(tx.error);
+    expect(tx.value.metadata.orderId).toBe("ORD-42");
+    expect(tx.value.metadata.source).toBe("integration");
+  });
 });

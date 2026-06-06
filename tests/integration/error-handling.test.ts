@@ -95,4 +95,46 @@ describe("error handling", () => {
       }
     },
   );
+
+  it("I16: a well-formed but unknown key yields an auth category", async () => {
+    // npk_/nps_ prefixes are valid so construction succeeds; the server rejects
+    // the key at request time with an `auth` category. This proves the SDK can
+    // tell a merchant their key is invalid (the original failure mode).
+    const sdk = createNylonPay({
+      apiKey: "npk_unknownkey0000000000000000000",
+      apiSecret: "nps_unknownsecret000000000000000000000000000000000000",
+      force: true,
+    });
+
+    const status = await sdk.getStatus({ reference: "any-ref" });
+    expect(status.isOk).toBe(false);
+    if (status.isErr) {
+      expect(parseError(status.error).category).toBe("auth");
+    }
+
+    await expect(
+      sdk.collectPayment({
+        amount: 1000,
+        currency: "UGX",
+        customer: { name: "Test", phoneNumber: TEST_PHONE },
+        description: "unknown key",
+      }),
+    ).rejects.toMatchObject({ category: "auth" });
+  });
+
+  it("throws a validation category for bad input (no network)", async () => {
+    const sdk = createTestSdk();
+    await expect(
+      sdk.collectPayment({
+        amount: 0,
+        currency: "UGX",
+        customer: { name: "Test", phoneNumber: TEST_PHONE },
+        description: "zero amount",
+      }),
+    ).rejects.toMatchObject({ category: "validation" });
+
+    await expect(sdk.getTransaction({})).rejects.toMatchObject({
+      category: "validation",
+    });
+  });
 });
