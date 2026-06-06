@@ -80,19 +80,21 @@ describe("error handling", () => {
   // Live-only: invalid credentials produce an auth error (not testable in sandbox
   // because we can't create bad-but-valid-looking keys without the secret)
   it.skipIf(!isLiveMode)(
-    "I15: returns an auth error for a revoked API key (live only)",
+    "I15: throws an auth error for a revoked API key (live only)",
     async () => {
       const sdk = createNylonPay({
         apiKey: "npk_revoked000000000000000000000",
         apiSecret: "nps_revoked00000000000000000000000000000000000000000",
         force: true,
       });
-      const result = await sdk.getStatus({ reference: "any-ref" });
-      expect(result.isOk).toBe(false);
-      if (result.isErr) {
-        const error = parseError(result.error);
-        expect(error.category).toBe("auth");
-      }
+      await expect(
+        sdk.collectPayment({
+          amount: 1000,
+          currency: "UGX",
+          customer: { name: "Test", phoneNumber: TEST_PHONE },
+          description: "revoked key",
+        }),
+      ).rejects.toMatchObject({ category: "auth" });
     },
   );
 

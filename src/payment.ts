@@ -37,7 +37,7 @@ type OpenStream = (
  */
 type PaymentState = {
   reference: string;
-  status: TransactionStatus | null;
+  status: TransactionStatus;
   transaction: Transaction | null;
   pollingTimer: ReturnType<typeof setTimeout> | null;
   resolved: boolean;
@@ -341,9 +341,9 @@ export function createPaymentInstance(
    * @internal
    */
   function startUpdates(): void {
-    if (TERMINAL_STATES.has(state.status ?? "pending")) {
+    if (TERMINAL_STATES.has(state.status)) {
       setTimeout(() => {
-        void handleTerminalState(state.status as TransactionStatus);
+        void handleTerminalState(state.status);
       }, 0);
       return;
     }

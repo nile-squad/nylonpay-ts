@@ -640,8 +640,8 @@ export interface PaymentInstance {
   /** The transaction reference. Immutable after creation. */
   readonly reference: string;
 
-  /** Current transaction status. `null` until the first poll resolves. */
-  readonly status: TransactionStatus | null;
+  /** Current transaction status, set from the initiation response and updated on each status change. */
+  readonly status: TransactionStatus;
 
   /**
    * Register a handler for a payment event. Fires every time the event
