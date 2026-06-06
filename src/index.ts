@@ -30,8 +30,8 @@
 
 // Factory function - main entry point
 export { createNylonPay } from "./create-nylon-pay";
-// Error parsing utility
-export { parseError } from "./transport";
+// Error utilities
+export { createSdkError, parseError } from "./transport";
 // SDK instance type
 // Payment instance type
 // Configuration type
@@ -64,6 +64,7 @@ export type {
   PaymentMethod,
   PhoneVerification,
   SdkError,
+  SdkErrorCategory,
   SdkHooks,
   StatusResponse,
   Transaction,

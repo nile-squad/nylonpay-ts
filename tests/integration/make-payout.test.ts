@@ -27,20 +27,10 @@ describe("makePayout", () => {
     expect(payout.reference).toBeTruthy();
     initiatedReference = payout.reference;
 
-    const backendError = await new Promise<string | null>((resolve) => {
-      const timer = setTimeout(() => resolve(null), 300);
-      payout.once("error", (data) => {
-        clearTimeout(timer);
-        resolve(data.error ?? "unknown backend error");
-      });
-    });
-
-    if (backendError !== null) {
-      throw new Error(`makePayout rejected by backend: ${backendError}`);
-    }
-
+    // makePayout throws on backend rejection, so a returned instance means the
+    // payout was accepted.
     const tx = await sdk.getTransaction({ reference: initiatedReference });
-    if (tx.isErr) throw new Error(`makePayout failed silently: ${tx.error}`);
+    if (tx.isErr) throw new Error(`makePayout failed: ${tx.error}`);
     expect(tx.value.reference).toBe(initiatedReference);
     expect(tx.value.currency).toBe("UGX");
   });

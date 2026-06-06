@@ -7,7 +7,7 @@ import { randomBytes } from "node:crypto";
 import { Err, Ok, type Result } from "slang-ts";
 import { createPaymentInstance } from "./payment";
 import { SDK_ACTIONS } from "./sdk.config";
-import { createTransport } from "./transport";
+import { createSdkError, createTransport, parseError } from "./transport";
 import type {
   CollectPaymentInput,
   CreateInvoiceInput,
@@ -135,21 +135,14 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
       );
     }
 
-    if (result.isOk) {
-      return createPaymentInstance(result.value, commonDeps);
+    // Initiation failed (invalid key, signature, limit, provider reject). The
+    // transaction never started, so there is nothing to poll — throw a
+    // categorized error instead of burying it in a PaymentInstance.
+    if (result.isErr) {
+      throw createSdkError(parseError(result.error));
     }
 
-    return createPaymentInstance(
-      { reference, status: "pending" },
-      {
-        ...commonDeps,
-        fetchStatus: async () => Err(result.error),
-        fetchTransaction: async () => Err(result.error),
-        pollIntervalMs: 0,
-        maxPollAttempts: 1,
-        maxPollDuration: Number.MAX_SAFE_INTEGER,
-      },
-    );
+    return createPaymentInstance(result.value, commonDeps);
   }
 
   /**
@@ -245,21 +238,13 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
       );
     }
 
-    if (result.isOk) {
-      return createPaymentInstance(result.value, commonDeps);
+    // Initiation failed — throw a categorized error rather than burying it in a
+    // PaymentInstance (see collectPayment for rationale).
+    if (result.isErr) {
+      throw createSdkError(parseError(result.error));
     }
 
-    return createPaymentInstance(
-      { reference, status: "pending" },
-      {
-        ...commonDeps,
-        fetchStatus: async () => Err(result.error),
-        fetchTransaction: async () => Err(result.error),
-        pollIntervalMs: 0,
-        maxPollAttempts: 1,
-        maxPollDuration: Number.MAX_SAFE_INTEGER,
-      },
-    );
+    return createPaymentInstance(result.value, commonDeps);
   }
 
   /**

@@ -51,7 +51,7 @@ describe("error handling", () => {
     expect(a).toBe(b);
   });
 
-  it("I13: returns Err for an unknown transaction reference", async () => {
+  it("I13: returns a not_found error for an unknown transaction reference", async () => {
     const sdk = createTestSdk();
     const result = await sdk.getTransaction({
       reference: "ref-does-not-exist-xyz",
@@ -59,29 +59,22 @@ describe("error handling", () => {
     expect(result.isOk).toBe(false);
     if (result.isErr) {
       const error = parseError(result.error);
-      expect(error.message).toMatch(/not found/i);
+      expect(error.category).toBe("not_found");
     }
   });
 
-  it("I14: returns Err when collectPayment amount is below the minimum", async () => {
+  it("I14: throws a validation error when collectPayment amount is below the minimum", async () => {
     const sdk = createTestSdk();
-    const payment = await sdk.collectPayment({
-      amount: 100,
-      currency: "UGX",
-      customer: { name: "Test", phoneNumber: TEST_PHONE },
-      description: "below minimum",
-    });
-
-    const backendError = await new Promise<string | null>((resolve) => {
-      const timer = setTimeout(() => resolve(null), 300);
-      payment.once("error", (data) => {
-        clearTimeout(timer);
-        resolve(data.error ?? null);
-      });
-    });
-
-    // Backend rejects sub-minimum amounts — the SDK surfaces the error event
-    expect(backendError).not.toBeNull();
+    // The backend rejects sub-minimum amounts at initiation, so collectPayment
+    // throws rather than returning a PaymentInstance.
+    await expect(
+      sdk.collectPayment({
+        amount: 100,
+        currency: "UGX",
+        customer: { name: "Test", phoneNumber: TEST_PHONE },
+        description: "below minimum",
+      }),
+    ).rejects.toMatchObject({ category: "validation" });
   });
 
   // Live-only: invalid credentials produce an auth error (not testable in sandbox
@@ -98,7 +91,7 @@ describe("error handling", () => {
       expect(result.isOk).toBe(false);
       if (result.isErr) {
         const error = parseError(result.error);
-        expect(error.message).toMatch(/key|auth|invalid/i);
+        expect(error.category).toBe("auth");
       }
     },
   );

@@ -125,13 +125,15 @@ describe("createTransport", () => {
       }
     });
 
-    it("returns Err with parsed error when status is false", async () => {
+    it("derives the category from a tagged HTTP 400 error", async () => {
       mockFetch.mockResolvedValueOnce({
-        ok: true,
+        ok: false,
+        status: 400,
+        statusText: "Bad Request",
         json: () =>
           Promise.resolve({
             status: false,
-            message: "Invalid amount",
+            message: "[log_1] API key was not found -- error-type: auth",
             data: {},
           }),
       });
@@ -145,8 +147,9 @@ describe("createTransport", () => {
       expect(result.isErr).toBe(true);
       if (result.isErr) {
         const error = parseError(result.error);
-        expect(error.code).toBe("UNKNOWN");
-        expect(error.message).toBe("Invalid amount");
+        expect(error.category).toBe("auth");
+        expect(error.message).toBe("[log_1] API key was not found");
+        expect(error.retryable).toBe(false);
       }
     });
 
@@ -165,7 +168,7 @@ describe("createTransport", () => {
       expect(result.isErr).toBe(true);
       if (result.isErr) {
         const error = parseError(result.error);
-        expect(error.code).toBe("INVALID_RESPONSE");
+        expect(error.category).toBe("internal");
       }
     });
 
@@ -196,7 +199,7 @@ describe("createTransport", () => {
       expect(result.isErr).toBe(true);
       if (result.isErr) {
         const error = parseError(result.error);
-        expect(error.code).toBe("RESPONSE_TAMPERED");
+        expect(error.category).toBe("internal");
       }
     });
   });
@@ -326,19 +329,24 @@ describe("createTransport", () => {
 });
 
 describe("parseError", () => {
-  it("parses JSON error string into SdkError", () => {
+  it("parses a JSON SdkError envelope", () => {
     const error = parseError(
-      '{"code":"HTTP_404","message":"Not found","statusCode":404,"retryable":false}',
+      '{"category":"not_found","message":"Not found","retryable":false}',
     );
-    expect(error.code).toBe("HTTP_404");
+    expect(error.category).toBe("not_found");
     expect(error.message).toBe("Not found");
-    expect(error.statusCode).toBe(404);
     expect(error.retryable).toBe(false);
   });
 
-  it("falls back to UNKNOWN for invalid JSON", () => {
+  it("extracts the category from a tagged raw message", () => {
+    const error = parseError("Transaction not found -- error-type: not_found");
+    expect(error.category).toBe("not_found");
+    expect(error.message).toBe("Transaction not found");
+  });
+
+  it("falls back to internal for an untagged message", () => {
     const error = parseError("some random error");
-    expect(error.code).toBe("UNKNOWN");
+    expect(error.category).toBe("internal");
     expect(error.message).toBe("some random error");
   });
 });

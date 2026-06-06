@@ -189,16 +189,17 @@ export function createPaymentInstance(
 
   /**
    * Handle polling error.
-   * "Not found" during early polling is expected; other errors stop polling.
+   * A `not_found` category during early polling is expected (the transaction
+   * may not have propagated yet) — keep polling. Any other category is a real
+   * failure that stops polling.
    * @internal
    */
   function handlePollError(error: string): void {
-    const isNotFound =
-      error.includes("not found") || error.includes("NOT_FOUND");
-    if (isNotFound) {
+    const parsed = parseError(error);
+    if (parsed.category === "not_found") {
       return;
     }
-    emitEvent("error", parseError(error).message);
+    emitEvent("error", parsed.message);
     state.resolved = true;
     stopPolling();
   }

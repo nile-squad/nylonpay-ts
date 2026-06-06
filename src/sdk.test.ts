@@ -9,13 +9,18 @@ import {
 import { createTransport } from "./transport";
 import type { Transaction } from "./types";
 
-vi.mock("./transport", () => ({
-  createTransport: vi.fn(() => ({
-    send: vi.fn(),
-    parseError: vi.fn((error: string) => ({ code: "UNKNOWN", message: error })),
-  })),
-  parseError: vi.fn((error: string) => ({ code: "UNKNOWN", message: error })),
-}));
+vi.mock("./transport", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./transport")>();
+  return {
+    // Keep the real parseError + createSdkError so categorized errors round-trip;
+    // only the network-bound transport factory is stubbed.
+    ...actual,
+    createTransport: vi.fn(() => ({
+      send: vi.fn(),
+      parseError: actual.parseError,
+    })),
+  };
+});
 
 const mockTransaction: Transaction = {
   id: "txn-123",
@@ -546,9 +551,11 @@ describe("createNylonPay", () => {
       expect(result.value.reference).toBe("test-ref");
     });
 
-    it("afterCollect is called with Err result on transport failure", async () => {
+    it("afterCollect fires with Err, then collectPayment throws a categorized error on init failure", async () => {
       const afterCollect = vi.fn();
-      mockSend.mockResolvedValue(Err("Server error"));
+      mockSend.mockResolvedValue(
+        Err('{"category":"auth","message":"API key was not found"}'),
+      );
 
       const sdk = createNylonPay({
         apiKey: "npk_test",
@@ -557,11 +564,41 @@ describe("createNylonPay", () => {
         hooks: { afterCollect },
       });
 
-      await sdk.collectPayment(baseCollectInput);
+      await expect(sdk.collectPayment(baseCollectInput)).rejects.toMatchObject({
+        category: "auth",
+        message: "API key was not found",
+      });
 
       expect(afterCollect).toHaveBeenCalledOnce();
       const [result] = afterCollect.mock.calls[0];
       expect(result.isErr).toBe(true);
+    });
+
+    it("makePayout throws a categorized error on init failure", async () => {
+      mockSend.mockResolvedValue(
+        Err(
+          '{"category":"limit","message":"Transaction exceeds account limits"}',
+        ),
+      );
+
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+      });
+
+      await expect(
+        sdk.makePayout({
+          amount: 1000,
+          currency: "UGX",
+          customer: { name: "Jane", phoneNumber: "+256700000000" },
+          destination: {
+            accountHolderName: "Jane Doe",
+            accountNumber: "123456",
+          },
+          description: "Refund",
+        }),
+      ).rejects.toMatchObject({ category: "limit" });
     });
 
     it("afterCollect fires for collectPaymentAndResolve too", async () => {

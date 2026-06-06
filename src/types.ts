@@ -345,16 +345,42 @@ export type SdkAuthHeaders = {
 };
 
 /**
- * Structured error returned by SDK operations. `code` is machine-readable
+ * Well-known failure categories. The SDK derives these from the server's
+ * tagged error (or from the transport for `network`/`timeout`) so merchants can
+ * branch on a stable category instead of parsing messages or HTTP status codes.
+ *
+ * - `auth` — invalid/missing/revoked/expired key, bad signature, replay, scope.
+ * - `validation` — input the server rejected.
+ * - `limit` — account/KYC transaction limits exceeded.
+ * - `rate_limit` — too many requests.
+ * - `account` — merchant account missing or not active.
+ * - `provider` — payment provider/engine rejected the operation.
+ * - `not_found` — referenced transaction does not exist.
+ * - `internal` — unexpected server-side failure.
+ * - `network` — request never reached the server (DNS, TLS, connection).
+ * - `timeout` — request exceeded the configured timeout.
+ */
+export type SdkErrorCategory =
+  | "auth"
+  | "validation"
+  | "limit"
+  | "rate_limit"
+  | "account"
+  | "provider"
+  | "not_found"
+  | "internal"
+  | "network"
+  | "timeout";
+
+/**
+ * Structured error returned by SDK operations. `category` is machine-readable
  * for branching logic; `message` is human-readable for logs and alerts.
  * `retryable` tells the merchant whether the same request may succeed
  * on re-invocation.
- * @internal
  */
 export type SdkError = {
-  code: string;
+  category: SdkErrorCategory;
   message: string;
-  statusCode?: number;
   retryable?: boolean;
 };
 

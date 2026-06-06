@@ -289,7 +289,9 @@ describe("createPaymentInstance", () => {
       const handler = vi.fn();
       const deps = createMockDeps();
       deps.fetchStatus
-        .mockResolvedValueOnce(Err("Transaction not found"))
+        .mockResolvedValueOnce(
+          Err('{"category":"not_found","message":"Transaction not found"}'),
+        )
         .mockResolvedValueOnce(
           Ok({
             reference: "test-ref",

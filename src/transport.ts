@@ -17,11 +17,81 @@ import {
   SDK_SERVICE,
 } from "./sdk.config";
 import { createSignature, createTimestamp } from "./signature";
-import type { SdkError, TransportRequest } from "./types";
+import type { SdkError, SdkErrorCategory, TransportRequest } from "./types";
 import { verifyResponseSignature } from "./verify-response";
 
 /** Cached fingerprint for this server instance. */
 const CACHED_FINGERPRINT = generateFingerprint();
+
+/** Known failure categories the server tags onto error messages. */
+const KNOWN_CATEGORIES = new Set<SdkErrorCategory>([
+  "auth",
+  "validation",
+  "limit",
+  "rate_limit",
+  "account",
+  "provider",
+  "not_found",
+  "internal",
+  "network",
+  "timeout",
+]);
+
+/** HTTP status → category for errors that aren't server-tagged. */
+const STATUS_CATEGORY: Record<number, SdkErrorCategory> = {
+  408: "timeout",
+  429: "rate_limit",
+};
+
+/** Matches the server's ` -- error-type: <category>` message suffix. */
+const ERROR_TYPE_SUFFIX = /^(.*?)\s*--\s*error-type:\s*([a-z_]+)\s*$/is;
+
+/**
+ * Split the server's tagged category off an error message. The backend appends
+ * ` -- error-type: <category>` to every SDK error (the only channel available —
+ * Nile returns 200/400 only and drops the response `data` on failures). The
+ * leading `[logId]` and human text are preserved as the message.
+ */
+function parseCategoryFromMessage(message: string): {
+  category: SdkErrorCategory | null;
+  message: string;
+} {
+  const match = ERROR_TYPE_SUFFIX.exec(message);
+  if (match?.[2] && KNOWN_CATEGORIES.has(match[2] as SdkErrorCategory)) {
+    return {
+      category: match[2] as SdkErrorCategory,
+      message: match[1] ?? message,
+    };
+  }
+  return { category: null, message };
+}
+
+/** Build a structured SdkError from an HTTP error body's message + status. */
+function buildHttpError(rawMessage: string, statusCode: number): SdkError {
+  const parsed = parseCategoryFromMessage(rawMessage);
+  const category: SdkErrorCategory =
+    parsed.category ??
+    STATUS_CATEGORY[statusCode] ??
+    (statusCode >= 500 ? "internal" : "validation");
+  return {
+    category,
+    message: parsed.message,
+    retryable: RETRYABLE_STATUS_CODES.has(statusCode),
+  };
+}
+
+/**
+ * Convert a structured SdkError into a throwable Error that still carries the
+ * category and retryable flag. Used by async operations that throw on
+ * initiation failure (invalid key, etc.) so merchants can `catch (e)` and read
+ * `e.category`.
+ */
+export function createSdkError(error: SdkError): Error & SdkError {
+  return Object.assign(new Error(error.message), {
+    category: error.category,
+    retryable: error.retryable,
+  });
+}
 
 /** Calculate exponential backoff delay with jitter. */
 function calculateBackoff(attempt: number): number {
@@ -193,15 +263,8 @@ export function createTransport({
             return attempt(currentAttempt + 1);
           }
 
-          const sdkError: SdkError = {
-            code: `HTTP_${statusCode}`,
-            message: errorMessage,
-            statusCode,
-            retryable,
-          };
-
           cleanup();
-          return Err(JSON.stringify(sdkError));
+          return Err(JSON.stringify(buildHttpError(errorMessage, statusCode)));
         }
 
         const responseBody = await response.json();
@@ -214,10 +277,10 @@ export function createTransport({
           cleanup();
           return Err(
             JSON.stringify({
-              code: "INVALID_RESPONSE",
+              category: "internal",
               message: "Response missing status field",
               retryable: false,
-            }),
+            } satisfies SdkError),
           );
         }
 
@@ -241,10 +304,10 @@ export function createTransport({
               cleanup();
               return Err(
                 JSON.stringify({
-                  code: "RESPONSE_TAMPERED",
+                  category: "internal",
                   message: "Response signature verification failed",
                   retryable: false,
-                }),
+                } satisfies SdkError),
               );
             }
           }
@@ -263,7 +326,7 @@ export function createTransport({
         const isAbort =
           error instanceof DOMException && error.name === "AbortError";
         const sdkError: SdkError = {
-          code: isAbort ? "TIMEOUT" : "NETWORK_ERROR",
+          category: isAbort ? "timeout" : "network",
           message: isAbort
             ? `Request timed out after ${timeoutMs}ms`
             : String(error),
@@ -286,15 +349,17 @@ export function createTransport({
 }
 
 /**
- * Parse an error string into an SdkError object.
- * Tries JSON.parse first; falls back to a generic UNKNOWN error.
+ * Parse an error string into a structured SdkError with a `category`.
+ * Tries the JSON envelope first; otherwise pulls the server's
+ * ` -- error-type: <category>` suffix off a raw message, falling back to
+ * category `internal` when untagged.
  *
  * @example
  * ```ts
  * const result = await sdk.getStatus({ reference: "ORDER-123" });
  * if (!result.isOk) {
  *   const error = parseError(result.error);
- *   console.log(error.code, error.message);
+ *   console.log(error.category, error.message);
  * }
  * ```
  */
@@ -304,16 +369,21 @@ export function parseError(error: string): SdkError {
     if (
       parsed &&
       typeof parsed === "object" &&
-      "code" in parsed &&
+      "category" in parsed &&
       "message" in parsed &&
-      typeof (parsed as Record<string, unknown>).code === "string" &&
+      typeof (parsed as Record<string, unknown>).category === "string" &&
       typeof (parsed as Record<string, unknown>).message === "string"
     ) {
       return parsed as SdkError;
     }
   } catch {
-    // Not JSON, fall through
+    // Not our JSON envelope — fall through to suffix parsing.
   }
 
-  return { code: "UNKNOWN", message: error };
+  // Raw server message: pull the ` -- error-type: <category>` suffix if present.
+  const fromSuffix = parseCategoryFromMessage(error);
+  return {
+    category: fromSuffix.category ?? "internal",
+    message: fromSuffix.message,
+  };
 }
