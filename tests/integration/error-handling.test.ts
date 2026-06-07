@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { createNylonPay, parseError } from "../../dist/index.js";
-import { createTestSdk, isLiveMode, TEST_PHONE } from "./setup.js";
+import {
+  createTestSdk,
+  isLiveMode,
+  TEST_BASE_URL,
+  TEST_PHONE,
+} from "./setup.js";
 
 describe("error handling", () => {
   it("I8: throws synchronously for a missing apiKey", () => {
@@ -85,6 +90,7 @@ describe("error handling", () => {
       const sdk = createNylonPay({
         apiKey: "npk_revoked000000000000000000000",
         apiSecret: "nps_revoked00000000000000000000000000000000000000000",
+        baseUrl: TEST_BASE_URL,
         force: true,
       });
       await expect(
@@ -105,6 +111,7 @@ describe("error handling", () => {
     const sdk = createNylonPay({
       apiKey: "npk_unknownkey0000000000000000000",
       apiSecret: "nps_unknownsecret000000000000000000000000000000000000",
+      baseUrl: TEST_BASE_URL,
       force: true,
     });
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createNylonPay } from "../../dist/index.js";
-import { createTestSdk, TEST_PHONE } from "./setup.js";
+import { createTestSdk, TEST_BASE_URL, TEST_PHONE } from "./setup.js";
 
 // Unique amounts per run avoid the backend's duplicate-payment cache.
 const RUN_AMOUNT = 1000 + (Date.now() % 8000);
@@ -32,6 +32,7 @@ describe("status updates", () => {
     const sdk = createNylonPay({
       apiKey: process.env.NYLONPAY_API_KEY ?? "",
       apiSecret: process.env.NYLONPAY_API_SECRET ?? "",
+      baseUrl: TEST_BASE_URL,
       streaming: false,
       force: true,
     });
