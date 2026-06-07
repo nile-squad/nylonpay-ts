@@ -551,7 +551,7 @@ describe("createNylonPay", () => {
       expect(result.value.reference).toBe("test-ref");
     });
 
-    it("afterCollect fires with Err, then collectPayment throws a categorized error on init failure", async () => {
+    it("afterCollect fires with Err, then collectPayment returns an instance that emits an error event on init failure", async () => {
       const afterCollect = vi.fn();
       mockSend.mockResolvedValue(
         Err('{"category":"auth","message":"API key was not found"}'),
@@ -564,17 +564,16 @@ describe("createNylonPay", () => {
         hooks: { afterCollect },
       });
 
-      await expect(sdk.collectPayment(baseCollectInput)).rejects.toMatchObject({
-        category: "auth",
-        message: "API key was not found",
-      });
+      const instance = await sdk.collectPayment(baseCollectInput);
+      const result = await instance.wait();
+      expect(result).toBeNull();
 
       expect(afterCollect).toHaveBeenCalledOnce();
-      const [result] = afterCollect.mock.calls[0];
-      expect(result.isErr).toBe(true);
+      const [hookResult] = afterCollect.mock.calls[0];
+      expect(hookResult.isErr).toBe(true);
     });
 
-    it("makePayout throws a categorized error on init failure", async () => {
+    it("makePayout returns an instance that emits an error event on init failure", async () => {
       mockSend.mockResolvedValue(
         Err(
           '{"category":"limit","message":"Transaction exceeds account limits"}',
@@ -587,18 +586,22 @@ describe("createNylonPay", () => {
         force: true,
       });
 
-      await expect(
-        sdk.makePayout({
-          amount: 1000,
-          currency: "UGX",
-          customer: { name: "Jane", phoneNumber: "+256700000000" },
-          destination: {
-            accountHolderName: "Jane Doe",
-            accountNumber: "123456",
-          },
-          description: "Refund",
-        }),
-      ).rejects.toMatchObject({ category: "limit" });
+      const instance = await sdk.makePayout({
+        amount: 1000,
+        currency: "UGX",
+        customer: { name: "Jane", phoneNumber: "+256700000000" },
+        destination: {
+          accountHolderName: "Jane Doe",
+          accountNumber: "123456",
+        },
+        description: "Refund",
+      });
+
+      const errorData = await new Promise<Record<string, unknown>>((resolve) => {
+        instance.on("error", (data) => resolve(data as Record<string, unknown>));
+      });
+      expect(errorData.category).toBe("limit");
+      expect(errorData.error).toBe("Transaction exceeds account limits");
     });
 
     it("afterCollect fires for collectPaymentAndResolve too", async () => {

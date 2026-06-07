@@ -153,11 +153,18 @@ export function createPaymentInstance(
    * Emit an event with current transaction data.
    * @internal
    */
-  function emitEvent(event: PaymentEvent, error?: string): void {
+  function emitEvent(
+    event: PaymentEvent,
+    error?: string,
+    category?: SdkError["category"],
+    retryable?: boolean,
+  ): void {
     const data: EventData = {
       event,
       transaction: state.transaction ?? undefined,
       error,
+      category,
+      retryable,
       timestamp: new Date().toISOString(),
     };
     state.emitter.emit(event, data);
@@ -473,7 +480,18 @@ export function createPaymentInstance(
     wait,
   };
 
-  startUpdates();
+  // When the backend rejected initiation, there is nothing to poll.
+  // Emit an "error" event on the next tick so handlers registered after
+  // creation still fire, and mark resolved so wait() returns null.
+  if (deps.initialError) {
+    state.resolved = true;
+    const err = deps.initialError;
+    setTimeout(() => {
+      emitEvent("error", err.message, err.category, err.retryable);
+    }, 0);
+  } else {
+    startUpdates();
+  }
 
   return paymentInstance;
 }

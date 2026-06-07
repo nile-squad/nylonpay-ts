@@ -148,10 +148,14 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
     }
 
     // Initiation failed (invalid key, signature, limit, provider reject). The
-    // transaction never started, so there is nothing to poll — throw a
-    // categorized error instead of burying it in a PaymentInstance.
+    // transaction never started — return a PaymentInstance that emits an
+    // "error" event instead of throwing, so merchants handle it via events.
     if (result.isErr) {
-      throw createSdkError(parseError(result.error));
+      const sdkErr = parseError(result.error);
+      return createPaymentInstance(
+        { reference, status: "pending" },
+        { ...commonDeps, initialError: sdkErr },
+      );
     }
 
     return createPaymentInstance(result.value, commonDeps);
@@ -250,10 +254,14 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
       );
     }
 
-    // Initiation failed — throw a categorized error rather than burying it in a
-    // PaymentInstance (see collectPayment for rationale).
+    // Initiation failed — return a PaymentInstance that emits an "error"
+    // event instead of throwing (see collectPayment for rationale).
     if (result.isErr) {
-      throw createSdkError(parseError(result.error));
+      const sdkErr = parseError(result.error);
+      return createPaymentInstance(
+        { reference, status: "pending" },
+        { ...commonDeps, initialError: sdkErr },
+      );
     }
 
     return createPaymentInstance(result.value, commonDeps);
