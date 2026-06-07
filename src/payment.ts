@@ -27,9 +27,6 @@ import type {
   TransactionStatus,
 } from "./types";
 
-/** Structured detail for the `"error"` event; preserves category/retryable. */
-type ErrorDetail = string | SdkError;
-
 /** Opens an SSE status stream; injected so tests can drive it without a network. */
 type OpenStream = (
   input: { reference: string } & StreamCallbacks,

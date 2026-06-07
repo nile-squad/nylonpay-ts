@@ -597,9 +597,13 @@ describe("createNylonPay", () => {
         description: "Refund",
       });
 
-      const errorData = await new Promise<Record<string, unknown>>((resolve) => {
-        instance.on("error", (data) => resolve(data as Record<string, unknown>));
-      });
+      const errorData = await new Promise<Record<string, unknown>>(
+        (resolve) => {
+          instance.on("error", (data) =>
+            resolve(data as Record<string, unknown>),
+          );
+        },
+      );
       expect(errorData.category).toBe("limit");
       expect(errorData.error).toBe("Transaction exceeds account limits");
     });
