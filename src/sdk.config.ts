@@ -26,6 +26,14 @@ export const STREAM_PATH = "/sse/transaction";
 /** Max stream reconnect attempts before falling back to polling. */
 export const MAX_STREAM_RECONNECTS = 2;
 
+/**
+ * Max size (in string length) the SSE read buffer may reach before a frame
+ * separator (`\n\n`) arrives. A server that streams without separators would
+ * otherwise grow the buffer unbounded — exceeding this closes the stream with an
+ * error (which falls back to polling). 1 MiB is far above any real status frame.
+ */
+export const MAX_SSE_BUFFER_LENGTH = 1024 * 1024;
+
 /** Nile.js service name for all SDK operations */
 export const SDK_SERVICE = "sdk";
 

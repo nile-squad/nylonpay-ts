@@ -197,6 +197,15 @@ export function createPaymentInstance(
    * @internal
    */
   async function handleStatusUpdate(response: StatusResponse): Promise<void> {
+    // Once the instance has resolved (terminal state, error, or timeout), no
+    // further events may fire. A late status — e.g. an SSE chunk buffered before
+    // the stream closed on fallback, or an in-flight poll — must be ignored so
+    // it cannot emit a duplicate terminal event or a spurious out-of-order one.
+    // The guard runs before any await, so the first caller to resolve wins.
+    if (state.resolved) {
+      return;
+    }
+
     if (response.reference !== state.reference) {
       resolveWithError(
         `Reference mismatch: expected ${state.reference} but got ${response.reference}`,

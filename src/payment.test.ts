@@ -620,5 +620,35 @@ describe("createPaymentInstance", () => {
       expect(deps.fetchStatus).toHaveBeenCalled();
       expect(success).toHaveBeenCalled();
     });
+
+    it("ignores stream updates after the instance has resolved", async () => {
+      const { deps, openStream, getCb } = makeStreamDeps();
+      deps.fetchTransaction.mockResolvedValue(Ok(mockTransaction));
+      const success = vi.fn();
+      const processing = vi.fn();
+
+      const instance = createPaymentInstance(
+        { reference: "test-ref", status: "pending" },
+        { ...deps, streaming: true, openStream },
+      );
+      instance.on("success", success);
+      instance.on("processing", processing);
+
+      getCb().onStatus(status("successful"));
+      await vi.advanceTimersByTimeAsync(1);
+      expect(success).toHaveBeenCalledTimes(1);
+
+      // Late buffered chunks delivered after the stream closed on resolution.
+      // The first "successful" is a no-op via the status-equality check, but the
+      // out-of-order "processing" would emit a spurious event without the
+      // resolved guard. Both must be ignored.
+      getCb().onStatus(status("successful"));
+      getCb().onStatus(status("processing"));
+      await vi.advanceTimersByTimeAsync(1);
+
+      expect(success).toHaveBeenCalledTimes(1);
+      expect(processing).not.toHaveBeenCalled();
+      expect(deps.fetchTransaction).toHaveBeenCalledTimes(1);
+    });
   });
 });

@@ -302,4 +302,49 @@ describe("SDK security suite", () => {
       expect(a).not.toBe(b);
     });
   });
+
+  describe("S14: SSE read buffer is bounded", () => {
+    it("closes the stream and errors when no frame separator arrives before the cap", async () => {
+      // 600k chars per chunk, no "\n\n" separator → after 2 chunks the buffer
+      // crosses the 1 MiB cap and the stream must abort rather than grow forever.
+      const chunk = new Uint8Array(600_000).fill(0x61); // 'a'
+      let reads = 0;
+      const reader = {
+        read: vi.fn(async () => {
+          reads += 1;
+          if (reads <= 3) return { done: false, value: chunk };
+          return { done: true, value: undefined };
+        }),
+      };
+      const fetchImpl = vi
+        .fn()
+        .mockResolvedValue({ ok: true, body: { getReader: () => reader } });
+
+      const transport = createTransport({
+        apiKey: "npk_test",
+        apiSecret: SECRET,
+        baseUrl: "https://test.api",
+        timeoutMs: 5000,
+        maxRetries: 0,
+        fetch: fetchImpl as unknown as typeof globalThis.fetch,
+      });
+
+      const onStatus = vi.fn();
+      const onError = vi.fn();
+      const onClose = vi.fn();
+      transport.openStream({
+        reference: "ref",
+        onStatus,
+        onError,
+        onClose,
+      });
+
+      // Flush the async read loop.
+      await new Promise((r) => setTimeout(r, 10));
+
+      expect(onError).toHaveBeenCalledWith("SSE buffer exceeded maximum size");
+      expect(onStatus).not.toHaveBeenCalled();
+      expect(reads).toBeLessThanOrEqual(2);
+    });
+  });
 });

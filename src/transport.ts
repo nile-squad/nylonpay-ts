@@ -13,6 +13,7 @@ import {
   DEFAULT_BASE_URL,
   DEFAULT_MAX_RETRIES,
   DEFAULT_TIMEOUT_MS,
+  MAX_SSE_BUFFER_LENGTH,
   RETRYABLE_STATUS_CODES,
   SDK_SERVICE,
   STREAM_PATH,
@@ -477,6 +478,18 @@ export function createTransport({
         }
 
         buffer += decoder.decode(chunk.value, { stream: true });
+
+        // Bound the buffer. Without a frame separator (`\n\n`) the parser keeps
+        // the whole buffer as `rest`, so a server streaming without separators
+        // (bug or compromise) would grow it without limit. Cap it, close, and
+        // surface an error — the caller falls back to polling. Mirrors the
+        // `error`-frame path: close() then notify unconditionally.
+        if (buffer.length > MAX_SSE_BUFFER_LENGTH) {
+          close();
+          input.onError("SSE buffer exceeded maximum size");
+          return;
+        }
+
         const { messages, rest } = parseSseBuffer(buffer);
         buffer = rest;
 
