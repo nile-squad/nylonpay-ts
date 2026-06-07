@@ -4,7 +4,7 @@
  */
 
 import { randomBytes } from "node:crypto";
-import { Err, Ok, type Result } from "slang-ts";
+import { Err, Ok, type Result, safeTry } from "slang-ts";
 import { createPaymentInstance } from "./payment";
 import { SDK_ACTIONS } from "./sdk.config";
 import { createSdkError, createTransport, parseError } from "./transport";
@@ -18,6 +18,7 @@ import type {
   NylonPaySdk,
   PaymentInstance,
   PhoneVerification,
+  SdkHook,
   SdkHooks,
   StatusResponse,
   Transaction,
@@ -46,6 +47,31 @@ type ResolvedConfig = {
 /** Generate a random 15-character hex reference for idempotency. */
 function generateReference(): string {
   return randomBytes(16).toString("hex").slice(0, 15);
+}
+
+/**
+ * Run a lifecycle hook safely. A disabled or unset hook is a no-op. The hook's
+ * `fn` runs inside `safeTry` so a throw/rejection in merchant code never bubbles
+ * into the payment flow — it is routed to the hook's `onError` (which is itself
+ * wrapped, so a faulty handler can't crash us either).
+ *
+ * Returns the hook's resolved value on success, or `undefined` when the hook was
+ * skipped or failed. Callers treat `undefined` as "no override" — for before
+ * hooks that means the original payload is used unchanged.
+ */
+async function runHook<TFn extends (...args: never[]) => unknown>(
+  hook: SdkHook<TFn> | undefined,
+  ...args: Parameters<TFn>
+): Promise<Awaited<ReturnType<TFn>> | undefined> {
+  if (!hook || hook.enabled === false) return undefined;
+
+  const result = await safeTry(async () => hook.fn(...args));
+  // safeTry widens the success value to `unknown` through the generic bound;
+  // by construction it is the hook's resolved return type.
+  if (result.isOk) return result.value as Awaited<ReturnType<TFn>>;
+
+  await safeTry(async () => hook.onError(result.error));
+  return undefined;
 }
 
 /**
@@ -121,11 +147,9 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
     }
 
     let payload = { ...input, reference };
-    if (config.hooks?.beforeCollect) {
-      const mutated = await config.hooks.beforeCollect(payload);
-      if (mutated != null)
-        payload = { ...mutated, reference: mutated.reference ?? reference };
-    }
+    const mutated = await runHook(config.hooks?.beforeCollect, payload);
+    if (mutated != null)
+      payload = { ...mutated, reference: mutated.reference ?? reference };
 
     const result = await transport.send<{
       reference: string;
@@ -135,17 +159,13 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
       payload,
     });
 
-    if (config.hooks?.afterCollect) {
-      await config.hooks.afterCollect(
-        result.isOk
-          ? Ok({
-              reference: result.value.reference,
-              status: result.value.status,
-            })
-          : Err(result.error),
-        payload,
-      );
-    }
+    await runHook(
+      config.hooks?.afterCollect,
+      result.isOk
+        ? Ok({ reference: result.value.reference, status: result.value.status })
+        : Err(result.error),
+      payload,
+    );
 
     // Initiation failed (invalid key, signature, limit, provider reject). The
     // transaction never started — return a PaymentInstance that emits an
@@ -178,28 +198,22 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
     }
 
     let payload = { ...input, reference };
-    if (config.hooks?.beforeCollect) {
-      const mutated = await config.hooks.beforeCollect(payload);
-      if (mutated != null)
-        payload = { ...mutated, reference: mutated.reference ?? reference };
-    }
+    const mutated = await runHook(config.hooks?.beforeCollect, payload);
+    if (mutated != null)
+      payload = { ...mutated, reference: mutated.reference ?? reference };
 
     const result = await transport.send<Transaction>({
       action: SDK_ACTIONS.collectPaymentAndResolve,
       payload,
     });
 
-    if (config.hooks?.afterCollect) {
-      await config.hooks.afterCollect(
-        result.isOk
-          ? Ok({
-              reference: result.value.reference,
-              status: result.value.status,
-            })
-          : Err(result.error),
-        payload,
-      );
-    }
+    await runHook(
+      config.hooks?.afterCollect,
+      result.isOk
+        ? Ok({ reference: result.value.reference, status: result.value.status })
+        : Err(result.error),
+      payload,
+    );
 
     if (result.isOk) {
       return Ok(result.value);
@@ -228,11 +242,9 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
     );
 
     let payload = { ...input, reference };
-    if (config.hooks?.beforePayout) {
-      const mutated = await config.hooks.beforePayout(payload);
-      if (mutated != null)
-        payload = { ...mutated, reference: mutated.reference ?? reference };
-    }
+    const mutated = await runHook(config.hooks?.beforePayout, payload);
+    if (mutated != null)
+      payload = { ...mutated, reference: mutated.reference ?? reference };
 
     const result = await transport.send<{
       reference: string;
@@ -242,17 +254,13 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
       payload,
     });
 
-    if (config.hooks?.afterPayout) {
-      await config.hooks.afterPayout(
-        result.isOk
-          ? Ok({
-              reference: result.value.reference,
-              status: result.value.status,
-            })
-          : Err(result.error),
-        payload,
-      );
-    }
+    await runHook(
+      config.hooks?.afterPayout,
+      result.isOk
+        ? Ok({ reference: result.value.reference, status: result.value.status })
+        : Err(result.error),
+      payload,
+    );
 
     // Initiation failed — return a PaymentInstance that emits an "error"
     // event instead of throwing (see collectPayment for rationale).
@@ -289,28 +297,22 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
     );
 
     let payload = { ...input, reference };
-    if (config.hooks?.beforePayout) {
-      const mutated = await config.hooks.beforePayout(payload);
-      if (mutated != null)
-        payload = { ...mutated, reference: mutated.reference ?? reference };
-    }
+    const mutated = await runHook(config.hooks?.beforePayout, payload);
+    if (mutated != null)
+      payload = { ...mutated, reference: mutated.reference ?? reference };
 
     const result = await transport.send<Transaction>({
       action: SDK_ACTIONS.makePayoutAndResolve,
       payload,
     });
 
-    if (config.hooks?.afterPayout) {
-      await config.hooks.afterPayout(
-        result.isOk
-          ? Ok({
-              reference: result.value.reference,
-              status: result.value.status,
-            })
-          : Err(result.error),
-        payload,
-      );
-    }
+    await runHook(
+      config.hooks?.afterPayout,
+      result.isOk
+        ? Ok({ reference: result.value.reference, status: result.value.status })
+        : Err(result.error),
+      payload,
+    );
 
     if (result.isOk) {
       return Ok(result.value);

@@ -297,15 +297,39 @@ export type AfterPayoutHook = (
 ) => void | Promise<void>;
 
 /**
+ * Wrapper applied to every lifecycle hook. The SDK runs `fn` inside `safeTry`,
+ * so a throw or rejection in merchant code never bubbles into the payment flow —
+ * it is routed to `onError` instead.
+ *
+ * WHY `onError` is required: an unhandled hook failure in a payments SDK is the
+ * worst kind of silent bug (the payment "succeeds" while a wallet credit or
+ * fulfillment side-effect was lost). Forcing the merchant to declare what
+ * happens on failure replaces both the old "throw and maybe crash" behaviour and
+ * a silent `catch {}` with an explicit, type-enforced decision.
+ */
+export type SdkHook<TFn> = {
+  /** Set `false` to disable this hook without removing its config. Default: true. */
+  enabled?: boolean;
+  /** The hook implementation. */
+  fn: TFn;
+  /**
+   * Required. Receives the thrown/rejected value if `fn` fails. Runs inside
+   * `safeTry` too, so an error here is contained as well.
+   */
+  onError: (error: unknown) => void | Promise<void>;
+};
+
+/**
  * Lifecycle hooks registered once at SDK creation. Each hook fires on every
  * matching operation — use them for cross-cutting concerns like logging,
- * audit trails, and payload enrichment.
+ * audit trails, and payload enrichment. Every hook is wrapped in {@link SdkHook}
+ * so merchant code can never crash the payment flow.
  */
 export type SdkHooks = {
-  beforeCollect?: BeforeCollectHook;
-  afterCollect?: AfterCollectHook;
-  beforePayout?: BeforePayoutHook;
-  afterPayout?: AfterPayoutHook;
+  beforeCollect?: SdkHook<BeforeCollectHook>;
+  afterCollect?: SdkHook<AfterCollectHook>;
+  beforePayout?: SdkHook<BeforePayoutHook>;
+  afterPayout?: SdkHook<AfterPayoutHook>;
 };
 
 /**

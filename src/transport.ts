@@ -336,22 +336,37 @@ export function createTransport({
           const { data: strippedData, responseSignature } =
             stripResponseSignature(data);
 
-          if (responseSignature) {
-            const isValid = verifyResponseSignature(
-              strippedData,
-              responseSignature,
-              apiSecret,
+          // Fail closed. Every authenticated success response from the backend
+          // is signed (see backend signSdkResponse). A missing signature means
+          // the response was tampered with — e.g. a MITM stripped the field — or
+          // did not originate from the backend. Reject rather than trust
+          // unverified data; a prior version skipped verification when the field
+          // was absent, which let a stripped-signature response through.
+          if (!responseSignature) {
+            cleanup();
+            return Err(
+              JSON.stringify({
+                category: "internal",
+                message: "Response signature missing",
+                retryable: false,
+              } satisfies SdkError),
             );
-            if (!isValid) {
-              cleanup();
-              return Err(
-                JSON.stringify({
-                  category: "internal",
-                  message: "Response signature verification failed",
-                  retryable: false,
-                } satisfies SdkError),
-              );
-            }
+          }
+
+          const isValid = verifyResponseSignature(
+            strippedData,
+            responseSignature,
+            apiSecret,
+          );
+          if (!isValid) {
+            cleanup();
+            return Err(
+              JSON.stringify({
+                category: "internal",
+                message: "Response signature verification failed",
+                retryable: false,
+              } satisfies SdkError),
+            );
           }
 
           cleanup();

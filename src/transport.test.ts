@@ -35,7 +35,12 @@ describe("createTransport", () => {
     it("sends request with correct envelope structure", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({ status: true, message: "OK", data: {} }),
+        json: () =>
+          Promise.resolve({
+            status: true,
+            message: "OK",
+            data: { _responseSignature: signResponse({}, "nps_test") },
+          }),
       });
 
       const transport = createTestTransport();
@@ -59,7 +64,12 @@ describe("createTransport", () => {
     it("injects _fingerprint into payload", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({ status: true, message: "OK", data: {} }),
+        json: () =>
+          Promise.resolve({
+            status: true,
+            message: "OK",
+            data: { _responseSignature: signResponse({}, "nps_test") },
+          }),
       });
 
       const transport = createTestTransport();
@@ -77,7 +87,12 @@ describe("createTransport", () => {
     it("includes auth headers", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({ status: true, message: "OK", data: {} }),
+        json: () =>
+          Promise.resolve({
+            status: true,
+            message: "OK",
+            data: { _responseSignature: signResponse({}, "nps_test") },
+          }),
       });
 
       const transport = createTestTransport();
@@ -156,7 +171,11 @@ describe("createTransport", () => {
     it("returns error when response missing status field", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({ message: "OK", data: {} }),
+        json: () =>
+          Promise.resolve({
+            message: "OK",
+            data: { _responseSignature: signResponse({}, "nps_test") },
+          }),
       });
 
       const transport = createTestTransport();
@@ -235,7 +254,11 @@ describe("createTransport", () => {
         .mockResolvedValueOnce({
           ok: true,
           json: () =>
-            Promise.resolve({ status: true, message: "OK", data: {} }),
+            Promise.resolve({
+              status: true,
+              message: "OK",
+              data: { _responseSignature: signResponse({}, "nps_test") },
+            }),
         });
 
       const transport = createTestTransport();
@@ -268,7 +291,11 @@ describe("createTransport", () => {
         .mockResolvedValueOnce({
           ok: true,
           json: () =>
-            Promise.resolve({ status: true, message: "OK", data: {} }),
+            Promise.resolve({
+              status: true,
+              message: "OK",
+              data: { _responseSignature: signResponse({}, "nps_test") },
+            }),
         });
 
       const transport = createTestTransport();
@@ -285,7 +312,12 @@ describe("createTransport", () => {
       );
       mockFetch.mockRejectedValueOnce(abortError).mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({ status: true, message: "OK", data: {} }),
+        json: () =>
+          Promise.resolve({
+            status: true,
+            message: "OK",
+            data: { _responseSignature: signResponse({}, "nps_test") },
+          }),
       });
 
       const transport = createTestTransport();
@@ -311,7 +343,11 @@ describe("createTransport", () => {
         .mockResolvedValueOnce({
           ok: true,
           json: () =>
-            Promise.resolve({ status: true, message: "OK", data: {} }),
+            Promise.resolve({
+              status: true,
+              message: "OK",
+              data: { _responseSignature: signResponse({}, "nps_test") },
+            }),
         });
 
       const transport = createTestTransport();

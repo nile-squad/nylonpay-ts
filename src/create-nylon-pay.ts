@@ -2,9 +2,9 @@
  * Factory function to create a Nylon Pay SDK instance.
  * This is the main entry point for merchants.
  *
- * Calling createNylonPay with the same apiKey and baseUrl returns the same
- * instance (singleton per key+url pair). Pass { force: true } to create a
- * fresh instance and replace the cached one.
+ * Calling createNylonPay with the same apiKey, apiSecret and baseUrl returns the
+ * same instance (singleton per key+secret+url). Rotating the secret yields a
+ * fresh instance. Pass { force: true } to force a new instance regardless.
  *
  * @example
  * ```ts
@@ -17,6 +17,7 @@
  * ```
  */
 
+import { createHash } from "node:crypto";
 import { createSdkInstance, type NylonPaySdk } from "./sdk";
 import {
   DEFAULT_BASE_URL,
@@ -34,9 +35,9 @@ const instances = new Map<string, NylonPaySdk>();
 /**
  * Create a Nylon Pay SDK instance.
  *
- * Returns the same instance for the same apiKey + baseUrl combination unless
- * { force: true } is passed. Use your test keys for sandbox, production keys
- * for live.
+ * Returns the same instance for the same apiKey + apiSecret + baseUrl
+ * combination unless { force: true } is passed. Use your test keys for sandbox,
+ * production keys for live.
  *
  * @param config - SDK configuration with apiKey and apiSecret
  * @returns SDK instance with all payment operations
@@ -58,7 +59,14 @@ export function createNylonPay(config: NylonPayConfig): NylonPaySdk {
   }
 
   const baseUrl = config.baseUrl ?? DEFAULT_BASE_URL;
-  const instanceKey = `${config.apiKey}:${baseUrl}`;
+  // Include a hash of the secret in the cache key so rotating apiSecret in a
+  // long-running process returns a fresh instance instead of a stale one signing
+  // with the old secret. Hashed (not raw) so the secret never sits in a Map key.
+  const secretHash = createHash("sha256")
+    .update(config.apiSecret)
+    .digest("hex")
+    .slice(0, 16);
+  const instanceKey = `${config.apiKey}:${baseUrl}:${secretHash}`;
 
   if (!config.force) {
     const existing = instances.get(instanceKey);

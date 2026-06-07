@@ -68,24 +68,27 @@ describe("error handling", () => {
     }
   });
 
-  it("I14: throws a validation error when collectPayment amount is below the minimum", async () => {
+  it("I14: collectPayment below the minimum amount surfaces a validation error event", async () => {
     const sdk = createTestSdk();
-    // The backend rejects sub-minimum amounts at initiation, so collectPayment
-    // throws rather than returning a PaymentInstance.
-    await expect(
-      sdk.collectPayment({
-        amount: 100,
-        currency: "UGX",
-        customer: { name: "Test", phoneNumber: TEST_PHONE },
-        description: "below minimum",
-      }),
-    ).rejects.toMatchObject({ category: "validation" });
+    // The backend rejects sub-minimum amounts at initiation. Per Invariant 17,
+    // server-side initiation failures surface via the PaymentInstance "error"
+    // event — they do NOT throw (only client-side validation throws).
+    const instance = await sdk.collectPayment({
+      amount: 100,
+      currency: "UGX",
+      customer: { name: "Test", phoneNumber: TEST_PHONE },
+      description: "below minimum",
+    });
+    const errorData = await new Promise<Record<string, unknown>>((resolve) => {
+      instance.on("error", (data) => resolve(data as Record<string, unknown>));
+    });
+    expect(errorData.category).toBe("validation");
   });
 
   // Live-only: invalid credentials produce an auth error (not testable in sandbox
   // because we can't create bad-but-valid-looking keys without the secret)
   it.skipIf(!isLiveMode)(
-    "I15: throws an auth error for a revoked API key (live only)",
+    "I15: a revoked API key surfaces an auth error event (live only)",
     async () => {
       const sdk = createNylonPay({
         apiKey: "npk_revoked000000000000000000000",
@@ -93,14 +96,20 @@ describe("error handling", () => {
         baseUrl: TEST_BASE_URL,
         force: true,
       });
-      await expect(
-        sdk.collectPayment({
-          amount: 1000,
-          currency: "UGX",
-          customer: { name: "Test", phoneNumber: TEST_PHONE },
-          description: "revoked key",
-        }),
-      ).rejects.toMatchObject({ category: "auth" });
+      const instance = await sdk.collectPayment({
+        amount: 1000,
+        currency: "UGX",
+        customer: { name: "Test", phoneNumber: TEST_PHONE },
+        description: "revoked key",
+      });
+      const errorData = await new Promise<Record<string, unknown>>(
+        (resolve) => {
+          instance.on("error", (data) =>
+            resolve(data as Record<string, unknown>),
+          );
+        },
+      );
+      expect(errorData.category).toBe("auth");
     },
   );
 
@@ -121,14 +130,17 @@ describe("error handling", () => {
       expect(parseError(status.error).category).toBe("auth");
     }
 
-    await expect(
-      sdk.collectPayment({
-        amount: 1000,
-        currency: "UGX",
-        customer: { name: "Test", phoneNumber: TEST_PHONE },
-        description: "unknown key",
-      }),
-    ).rejects.toMatchObject({ category: "auth" });
+    // Initiation failure surfaces via the "error" event, not a throw (Invariant 17).
+    const instance = await sdk.collectPayment({
+      amount: 1000,
+      currency: "UGX",
+      customer: { name: "Test", phoneNumber: TEST_PHONE },
+      description: "unknown key",
+    });
+    const errorData = await new Promise<Record<string, unknown>>((resolve) => {
+      instance.on("error", (data) => resolve(data as Record<string, unknown>));
+    });
+    expect(errorData.category).toBe("auth");
   });
 
   it("throws a validation category for bad input (no network)", async () => {
