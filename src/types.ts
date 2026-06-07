@@ -428,6 +428,17 @@ export type EventData = {
   transaction?: Transaction;
   /** Error message. Present for the `"error"` event. */
   error?: string;
+  /**
+   * Machine-readable failure category. Present for the `"error"` event when the
+   * failure carries one (initiation rejection, polling/stream failure) — lets
+   * merchants branch on a stable category instead of parsing the message.
+   */
+  category?: SdkErrorCategory;
+  /**
+   * Whether re-invoking the same operation may succeed. Present for the
+   * `"error"` event when known.
+   */
+  retryable?: boolean;
   /** ISO 8601 timestamp of when the event was emitted. */
   timestamp: string;
 };
@@ -453,8 +464,12 @@ export interface NylonPaySdk {
    * Returns a {@link PaymentInstance} that polls for status updates and emits
    * events (`processing`, `success`, `failed`, `cancelled`, `error`).
    *
-   * Auto-generates an idempotency `reference` if omitted. Throws on invalid
-   * input (zero amount, empty phone, bank method without bank details).
+   * Auto-generates an idempotency `reference` if omitted. Throws *synchronously*
+   * only on invalid input (zero amount, empty phone, bank method without bank
+   * details) — programmer errors caught before any network call. A server-side
+   * initiation rejection (auth, limit, provider, network, timeout) does **not**
+   * throw: the returned instance emits an `"error"` event carrying `category`
+   * and `retryable`, and `wait()` resolves `null`.
    *
    * @example
    * ```ts
@@ -467,6 +482,7 @@ export interface NylonPaySdk {
    *
    * payment.on("success", ({ transaction }) => fulfillOrder(transaction));
    * payment.on("failed", ({ error }) => notifyCustomer(error));
+   * payment.on("error", ({ error, category }) => log.error(category, error));
    * ```
    */
   collectPayment(input: CollectPaymentInput): Promise<PaymentInstance>;
@@ -498,7 +514,10 @@ export interface NylonPaySdk {
    * Returns a {@link PaymentInstance} that polls for status updates and emits
    * events as the payout progresses.
    *
-   * Auto-generates an idempotency `reference` if omitted.
+   * Auto-generates an idempotency `reference` if omitted. Same error semantics
+   * as {@link collectPayment}: throws synchronously on invalid input, but a
+   * server-side initiation rejection surfaces as an `"error"` event (with
+   * `category`/`retryable`) rather than a throw.
    *
    * @example
    * ```ts

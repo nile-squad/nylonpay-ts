@@ -21,10 +21,14 @@ import type {
   PaymentEvent,
   PaymentEventHandler,
   PaymentInstance,
+  SdkError,
   StatusResponse,
   Transaction,
   TransactionStatus,
 } from "./types";
+
+/** Structured detail for the `"error"` event; preserves category/retryable. */
+type ErrorDetail = string | SdkError;
 
 /** Opens an SSE status stream; injected so tests can drive it without a network. */
 type OpenStream = (
@@ -111,6 +115,12 @@ export function createPaymentInstance(
     maxPollAttempts?: number;
     streaming?: boolean;
     openStream?: OpenStream;
+    /**
+     * When set, the operation never started (the backend rejected initiation).
+     * The instance emits this as an `"error"` event on the next tick instead of
+     * polling — so a server-side rejection surfaces as an event, not a throw.
+     */
+    initialError?: SdkError;
   },
 ): PaymentInstance {
   const state: PaymentState = {
