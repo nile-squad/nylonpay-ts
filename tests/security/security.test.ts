@@ -1,5 +1,5 @@
 /**
- * Canonical SDK security test suite (spec §Security Tests, S1–S13).
+ * Canonical SDK security test suite (spec §Security Tests, S1–S14).
  *
  * Every Nylon Pay SDK implementation MUST cover these behaviors. They are the
  * cross-language contract for the SDK's cryptographic surface: request signing,
@@ -156,7 +156,11 @@ describe("SDK security suite", () => {
   });
 
   describe("S8: webhook signature verification", () => {
-    const body = JSON.stringify({ event: "payment.success", amount: 10000 });
+    const body = JSON.stringify({
+      event: "payment.success",
+      amount: 10000,
+      timestamp: new Date().toISOString(),
+    });
 
     it("accepts a valid signature over the raw body", () => {
       const sig = createHmac("sha256", SECRET).update(body).digest("hex");
@@ -300,6 +304,63 @@ describe("SDK security suite", () => {
       const a = createNylonPay({ apiKey: "npk_rot", apiSecret: "nps_v1" });
       const b = createNylonPay({ apiKey: "npk_rot", apiSecret: "nps_v2" });
       expect(a).not.toBe(b);
+    });
+  });
+
+  describe("S14: webhook verification is replay-protected", () => {
+    const webhookBody = (timestamp: string) =>
+      JSON.stringify({ event: "payment.success", amount: 10000, timestamp });
+    const signBody = (b: string) =>
+      createHmac("sha256", SECRET).update(b).digest("hex");
+
+    it("accepts a fresh, correctly-signed webhook", () => {
+      const b = webhookBody(new Date().toISOString());
+      expect(
+        verifyWebhookSignature({
+          payload: b,
+          signature: signBody(b),
+          secret: SECRET,
+        }),
+      ).toBe(true);
+    });
+
+    it("rejects a correctly-signed but stale webhook (a replay)", () => {
+      const b = webhookBody(new Date(Date.now() - 10 * 60_000).toISOString());
+      expect(
+        verifyWebhookSignature({
+          payload: b,
+          signature: signBody(b),
+          secret: SECRET,
+        }),
+      ).toBe(false);
+    });
+
+    it("fails closed when a valid signature carries no timestamp", () => {
+      const b = JSON.stringify({ event: "payment.success", amount: 10000 });
+      expect(
+        verifyWebhookSignature({
+          payload: b,
+          signature: signBody(b),
+          secret: SECRET,
+        }),
+      ).toBe(false);
+    });
+
+    it("a replayed timestamp cannot be refreshed without the secret", () => {
+      const original = webhookBody(
+        new Date(Date.now() - 10 * 60_000).toISOString(),
+      );
+      const signature = signBody(original);
+      const refreshed = webhookBody(new Date().toISOString());
+      // Swapping in a current timestamp while keeping the captured signature
+      // breaks the HMAC — the attacker cannot extend the freshness window.
+      expect(
+        verifyWebhookSignature({
+          payload: refreshed,
+          signature,
+          secret: SECRET,
+        }),
+      ).toBe(false);
     });
   });
 });

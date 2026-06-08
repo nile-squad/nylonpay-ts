@@ -186,6 +186,14 @@ export type VerifyWebhookInput = {
   payload: string | Uint8Array;
   signature: string;
   secret: string;
+  /**
+   * Replay-protection window in seconds. After the signature is verified, the
+   * timestamp carried inside the signed body must be within this many seconds of
+   * now, or verification fails. Defaults to 300 (5 minutes). Set to `0` to
+   * disable the freshness check (not recommended — a captured webhook then
+   * verifies forever).
+   */
+  toleranceSeconds?: number;
 };
 
 /**

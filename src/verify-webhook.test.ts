@@ -3,86 +3,181 @@ import { describe, expect, it } from "vitest";
 import { verifyWebhookSignature } from "./verify-webhook";
 
 const secret = "test-webhook-secret";
-const payload = JSON.stringify({ event: "collection.completed", data: {} });
-const validSignature = createHmac("sha256", secret)
-  .update(payload)
-  .digest("hex");
+
+function sign(body: string): string {
+  return createHmac("sha256", secret).update(body).digest("hex");
+}
+
+/** A realistic webhook body — the backend always stamps a fresh `timestamp`. */
+function body(overrides: Record<string, unknown> = {}): string {
+  return JSON.stringify({
+    event: "collection.completed",
+    data: {},
+    timestamp: new Date().toISOString(),
+    ...overrides,
+  });
+}
 
 describe("verifyWebhookSignature", () => {
-  it("returns true for valid signature", () => {
-    const result = verifyWebhookSignature({
-      payload,
-      signature: validSignature,
-      secret,
-    });
-    expect(result).toBe(true);
+  it("returns true for a valid signature on a fresh webhook", () => {
+    const raw = body();
+    expect(
+      verifyWebhookSignature({ payload: raw, signature: sign(raw), secret }),
+    ).toBe(true);
   });
 
-  it("returns false for invalid signature", () => {
-    const result = verifyWebhookSignature({
-      payload,
-      signature: "invalid-signature",
-      secret,
-    });
-    expect(result).toBe(false);
+  it("returns false for an invalid signature", () => {
+    expect(
+      verifyWebhookSignature({
+        payload: body(),
+        signature: "invalid-signature",
+        secret,
+      }),
+    ).toBe(false);
   });
 
-  it("returns false for tampered payload", () => {
-    const tamperedPayload = JSON.stringify({
-      event: "collection.failed",
-      data: {},
-    });
-    const result = verifyWebhookSignature({
-      payload: tamperedPayload,
-      signature: validSignature,
-      secret,
-    });
-    expect(result).toBe(false);
+  it("returns false for a tampered payload", () => {
+    const signed = body({ event: "collection.completed" });
+    const tampered = body({ event: "collection.failed" });
+    expect(
+      verifyWebhookSignature({
+        payload: tampered,
+        signature: sign(signed),
+        secret,
+      }),
+    ).toBe(false);
   });
 
-  it("works with string payload", () => {
-    const stringPayload = '{"event":"test"}';
-    const signature = createHmac("sha256", secret)
-      .update(stringPayload)
-      .digest("hex");
-    const result = verifyWebhookSignature({
-      payload: stringPayload,
-      signature,
-      secret,
-    });
-    expect(result).toBe(true);
+  it("works with a string payload", () => {
+    const raw = body();
+    expect(
+      verifyWebhookSignature({ payload: raw, signature: sign(raw), secret }),
+    ).toBe(true);
   });
 
-  it("works with Uint8Array payload", () => {
-    const bytes = new TextEncoder().encode(payload);
-    const signature = createHmac("sha256", secret).update(bytes).digest("hex");
-    const result = verifyWebhookSignature({
-      payload: bytes,
-      signature,
-      secret,
-    });
-    expect(result).toBe(true);
+  it("works with a Uint8Array payload", () => {
+    const raw = body();
+    const bytes = new TextEncoder().encode(raw);
+    expect(
+      verifyWebhookSignature({ payload: bytes, signature: sign(raw), secret }),
+    ).toBe(true);
   });
 
-  it("works with empty payload", () => {
-    const emptyPayload = "";
-    const signature = createHmac("sha256", secret)
-      .update(emptyPayload)
-      .digest("hex");
-    const result = verifyWebhookSignature({
-      payload: emptyPayload,
-      signature,
-      secret,
-    });
-    expect(result).toBe(true);
+  it("returns false when the signature is missing", () => {
+    const raw = body();
+    expect(
+      verifyWebhookSignature({ payload: raw, signature: "", secret }),
+    ).toBe(false);
   });
 
-  it("returns false when signature is missing", () => {
-    const result = verifyWebhookSignature({
-      payload,
-      signature: "",
-      secret,
+  it("verifies the raw HMAC layer over arbitrary bytes when freshness is disabled", () => {
+    const raw = "";
+    expect(
+      verifyWebhookSignature({
+        payload: raw,
+        signature: sign(raw),
+        secret,
+        toleranceSeconds: 0,
+      }),
+    ).toBe(true);
+  });
+
+  describe("replay protection (freshness window)", () => {
+    it("rejects a correctly-signed but stale webhook (replay)", () => {
+      const stale = body({
+        timestamp: new Date(Date.now() - 10 * 60_000).toISOString(),
+      });
+      expect(
+        verifyWebhookSignature({
+          payload: stale,
+          signature: sign(stale),
+          secret,
+        }),
+      ).toBe(false);
     });
-    expect(result).toBe(false);
+
+    it("accepts a webhook within the tolerance window", () => {
+      const recent = body({
+        timestamp: new Date(Date.now() - 60_000).toISOString(),
+      });
+      expect(
+        verifyWebhookSignature({
+          payload: recent,
+          signature: sign(recent),
+          secret,
+        }),
+      ).toBe(true);
+    });
+
+    it("rejects a future-dated webhook beyond the tolerance window", () => {
+      const future = body({
+        timestamp: new Date(Date.now() + 10 * 60_000).toISOString(),
+      });
+      expect(
+        verifyWebhookSignature({
+          payload: future,
+          signature: sign(future),
+          secret,
+        }),
+      ).toBe(false);
+    });
+
+    it("fails closed when a valid signature carries no timestamp", () => {
+      const noTs = JSON.stringify({ event: "collection.completed", data: {} });
+      expect(
+        verifyWebhookSignature({
+          payload: noTs,
+          signature: sign(noTs),
+          secret,
+        }),
+      ).toBe(false);
+    });
+
+    it("can be widened via toleranceSeconds for a slow consumer", () => {
+      const old = body({
+        timestamp: new Date(Date.now() - 10 * 60_000).toISOString(),
+      });
+      expect(
+        verifyWebhookSignature({
+          payload: old,
+          signature: sign(old),
+          secret,
+          toleranceSeconds: 900,
+        }),
+      ).toBe(true);
+    });
+
+    it("toleranceSeconds: 0 disables the freshness check (opt-out)", () => {
+      const stale = body({
+        timestamp: new Date(Date.now() - 24 * 3_600_000).toISOString(),
+      });
+      expect(
+        verifyWebhookSignature({
+          payload: stale,
+          signature: sign(stale),
+          secret,
+          toleranceSeconds: 0,
+        }),
+      ).toBe(true);
+    });
+
+    it("accepts a numeric epoch-millis timestamp", () => {
+      const raw = JSON.stringify({ event: "x", timestamp: Date.now() });
+      expect(
+        verifyWebhookSignature({ payload: raw, signature: sign(raw), secret }),
+      ).toBe(true);
+    });
+
+    it("cannot be refreshed by editing the timestamp (breaks the signature)", () => {
+      const original = body({
+        timestamp: new Date(Date.now() - 10 * 60_000).toISOString(),
+      });
+      const signature = sign(original);
+      // Attacker swaps in a fresh timestamp but keeps the original signature.
+      const refreshed = body({ timestamp: new Date().toISOString() });
+      expect(
+        verifyWebhookSignature({ payload: refreshed, signature, secret }),
+      ).toBe(false);
+    });
   });
 });
