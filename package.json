@@ -53,9 +53,10 @@
     "typecheck": "tsc --noEmit",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
+    "test:security": "vitest run --config vitest.config.security.ts",
     "test:integration": "vitest run --config vitest.config.integration.ts",
     "export": "tsc --noEmit && biome check . && tsup",
-    "prepublishOnly": "vitest run && tsc --noEmit && biome check . && tsup"
+    "prepublishOnly": "vitest run && vitest run --config vitest.config.security.ts && tsc --noEmit && biome check . && tsup"
   },
   "dependencies": {
     "slang-ts": "^0.0.7"

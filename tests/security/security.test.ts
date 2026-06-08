@@ -9,13 +9,13 @@
 
 import { createHmac } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
-import { createNylonPay } from "./create-nylon-pay";
-import { generateFingerprint } from "./fingerprint";
-import { generateNonce } from "./nonce";
-import { createCanonicalPayload, createSignature } from "./signature";
-import { createTransport } from "./transport";
-import { verifyResponseSignature } from "./verify-response";
-import { verifyWebhookSignature } from "./verify-webhook";
+import { createNylonPay } from "../../src/create-nylon-pay";
+import { generateFingerprint } from "../../src/fingerprint";
+import { generateNonce } from "../../src/nonce";
+import { createCanonicalPayload, createSignature } from "../../src/signature";
+import { createTransport } from "../../src/transport";
+import { verifyResponseSignature } from "../../src/verify-response";
+import { verifyWebhookSignature } from "../../src/verify-webhook";
 
 const SECRET = "nps_test_secret";
 
