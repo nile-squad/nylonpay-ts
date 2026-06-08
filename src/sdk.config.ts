@@ -17,22 +17,11 @@ export const DEFAULT_MAX_POLL_DURATION_MS = 300_000;
 /** Default max polling attempts before giving up */
 export const DEFAULT_MAX_POLL_ATTEMPTS = 150;
 
-/** Stream status updates over SSE by default (with polling fallback). */
-export const DEFAULT_STREAMING = true;
-
-/** Path of the SDK status stream route (lives at the host root, not under the action path). */
-export const STREAM_PATH = "/sse/transaction";
-
-/** Max stream reconnect attempts before falling back to polling. */
-export const MAX_STREAM_RECONNECTS = 2;
-
 /**
- * Max size (in string length) the SSE read buffer may reach before a frame
- * separator (`\n\n`) arrives. A server that streams without separators would
- * otherwise grow the buffer unbounded — exceeding this closes the stream with an
- * error (which falls back to polling). 1 MiB is far above any real status frame.
+ * Random jitter (ms) added to each poll interval so many concurrent payments
+ * don't synchronise into a thundering herd on the status endpoint.
  */
-export const MAX_SSE_BUFFER_LENGTH = 1024 * 1024;
+export const POLL_JITTER_MS = 250;
 
 /** Nile.js service name for all SDK operations */
 export const SDK_SERVICE = "sdk";

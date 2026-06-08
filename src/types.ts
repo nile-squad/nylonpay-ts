@@ -349,12 +349,6 @@ export type NylonPayConfig = {
   maxPollIntervalMs?: number;
   maxPollDurationMs?: number;
   maxPollAttempts?: number;
-  /**
-   * Receive status updates over an SSE stream (default `true`), falling back to
-   * polling automatically when the stream is unavailable. Set `false` to poll
-   * only.
-   */
-  streaming?: boolean;
   fetch?: typeof globalThis.fetch;
   /** Force a new instance even if one already exists for this key+url pair. */
   force?: boolean;

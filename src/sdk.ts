@@ -39,7 +39,6 @@ type ResolvedConfig = {
   maxPollIntervalMs: number;
   maxPollDurationMs: number;
   maxPollAttempts: number;
-  streaming: boolean;
   fetch: typeof globalThis.fetch;
   hooks?: SdkHooks;
 };
@@ -125,8 +124,6 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
     pollIntervalMs: config.maxPollIntervalMs,
     maxPollDuration: config.maxPollDurationMs,
     maxPollAttempts: config.maxPollAttempts,
-    streaming: config.streaming,
-    openStream: config.streaming ? transport.openStream : undefined,
   };
 
   /**

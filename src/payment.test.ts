@@ -34,11 +34,15 @@ function createMockDeps() {
 describe("createPaymentInstance", () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    // Pin poll jitter to 0 so the deterministic timing tests advance by exactly
+    // pollIntervalMs. The dedicated "poll jitter" test overrides this.
+    vi.spyOn(Math, "random").mockReturnValue(0);
   });
 
   afterEach(() => {
     vi.clearAllTimers();
     vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 
   describe("event emission", () => {
@@ -542,24 +546,7 @@ describe("createPaymentInstance", () => {
     });
   });
 
-  describe("SSE streaming", () => {
-    type StreamCb = {
-      onStatus: (s: unknown) => void;
-      onError: (m: string) => void;
-      onClose: () => void;
-    };
-
-    function makeStreamDeps() {
-      const deps = createMockDeps();
-      const close = vi.fn();
-      let callbacks: StreamCb | null = null;
-      const openStream = vi.fn((input: StreamCb) => {
-        callbacks = input;
-        return { close };
-      });
-      return { deps, openStream, close, getCb: () => callbacks as StreamCb };
-    }
-
+  describe("resolved guard", () => {
     const status = (s: string) => ({
       reference: "test-ref",
       status: s,
@@ -568,87 +555,79 @@ describe("createPaymentInstance", () => {
       updatedAt: "2024-01-01T00:00:01Z",
     });
 
-    it("drives events from the stream without polling", async () => {
-      const { deps, openStream, getCb } = makeStreamDeps();
+    it("stops polling and emits no further events after a terminal status", async () => {
+      const deps = createMockDeps();
+      deps.fetchStatus.mockResolvedValue(Ok(status("successful")));
       deps.fetchTransaction.mockResolvedValue(Ok(mockTransaction));
-      const processing = vi.fn();
       const success = vi.fn();
+      const processing = vi.fn();
 
       const instance = createPaymentInstance(
         { reference: "test-ref", status: "pending" },
-        { ...deps, streaming: true, openStream },
+        deps,
       );
-      instance.on("processing", processing);
       instance.on("success", success);
+      instance.on("processing", processing);
 
-      expect(openStream).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(10);
+      expect(success).toHaveBeenCalledTimes(1);
 
-      getCb().onStatus(status("processing"));
-      await vi.advanceTimersByTimeAsync(1);
-      expect(processing).toHaveBeenCalled();
-      expect(deps.fetchStatus).not.toHaveBeenCalled();
+      // Once resolved, the poll timer is cleared. Advancing well past several
+      // poll intervals must not fire another fetch or a duplicate/spurious event.
+      deps.fetchStatus.mockResolvedValue(Ok(status("processing")));
+      await vi.advanceTimersByTimeAsync(1000);
 
-      getCb().onStatus(status("successful"));
-      await vi.advanceTimersByTimeAsync(1);
-      expect(success).toHaveBeenCalled();
+      expect(success).toHaveBeenCalledTimes(1);
+      expect(processing).not.toHaveBeenCalled();
+      expect(deps.fetchTransaction).toHaveBeenCalledTimes(1);
+      expect(deps.fetchStatus).toHaveBeenCalledTimes(1);
     });
 
-    it("falls back to polling after the stream fails", async () => {
-      const { deps, openStream, getCb } = makeStreamDeps();
+    it("does not re-fire a terminal event when the same status repeats", async () => {
+      const deps = createMockDeps();
       deps.fetchStatus.mockResolvedValue(Ok(status("successful")));
       deps.fetchTransaction.mockResolvedValue(Ok(mockTransaction));
       const success = vi.fn();
 
       const instance = createPaymentInstance(
         { reference: "test-ref", status: "pending" },
-        // Longer duration cap so the reconnect backoffs don't exhaust it before
-        // the polling fallback runs.
-        { ...deps, streaming: true, openStream, maxPollDuration: 60_000 },
+        deps,
       );
       instance.on("success", success);
 
-      // MAX_STREAM_RECONNECTS = 2: two reconnects, the third failure falls back.
-      getCb().onError("boom");
       await vi.advanceTimersByTimeAsync(1000);
-      getCb().onError("boom");
-      await vi.advanceTimersByTimeAsync(2000);
-      getCb().onError("boom");
-      await vi.advanceTimersByTimeAsync(20);
-      await vi.advanceTimersByTimeAsync(5);
 
-      expect(openStream).toHaveBeenCalledTimes(3);
-      expect(deps.fetchStatus).toHaveBeenCalled();
-      expect(success).toHaveBeenCalled();
+      expect(success).toHaveBeenCalledTimes(1);
     });
+  });
 
-    it("ignores stream updates after the instance has resolved", async () => {
-      const { deps, openStream, getCb } = makeStreamDeps();
-      deps.fetchTransaction.mockResolvedValue(Ok(mockTransaction));
-      const success = vi.fn();
-      const processing = vi.fn();
+  describe("poll jitter", () => {
+    it("spreads consecutive polls by adding random jitter to the interval", async () => {
+      const deps = createMockDeps();
+      deps.fetchStatus.mockResolvedValue(
+        Ok({
+          reference: "test-ref",
+          status: "processing",
+          amount: 1000,
+          currency: "UGX",
+          updatedAt: "2024-01-01T00:00:01Z",
+        }),
+      );
+      vi.spyOn(Math, "random").mockReturnValue(0.5);
 
       const instance = createPaymentInstance(
         { reference: "test-ref", status: "pending" },
-        { ...deps, streaming: true, openStream },
+        deps,
       );
-      instance.on("success", success);
-      instance.on("processing", processing);
+      instance.on("processing", vi.fn());
 
-      getCb().onStatus(status("successful"));
-      await vi.advanceTimersByTimeAsync(1);
-      expect(success).toHaveBeenCalledTimes(1);
+      // pollIntervalMs (10) + 0.5 * POLL_JITTER_MS (250) = 135ms before the first
+      // poll fires. Advancing only the base interval must not be enough.
+      await vi.advanceTimersByTimeAsync(10);
+      expect(deps.fetchStatus).not.toHaveBeenCalled();
 
-      // Late buffered chunks delivered after the stream closed on resolution.
-      // The first "successful" is a no-op via the status-equality check, but the
-      // out-of-order "processing" would emit a spurious event without the
-      // resolved guard. Both must be ignored.
-      getCb().onStatus(status("successful"));
-      getCb().onStatus(status("processing"));
-      await vi.advanceTimersByTimeAsync(1);
-
-      expect(success).toHaveBeenCalledTimes(1);
-      expect(processing).not.toHaveBeenCalled();
-      expect(deps.fetchTransaction).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(125);
+      expect(deps.fetchStatus).toHaveBeenCalledTimes(1);
     });
   });
 });

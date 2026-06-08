@@ -6,58 +6,22 @@
  * @internal
  */
 
-import { Err, Ok, type Result, safeTry } from "slang-ts";
+import { Err, Ok, type Result } from "slang-ts";
 import { generateFingerprint } from "./fingerprint";
 import { generateNonce } from "./nonce";
 import {
   DEFAULT_BASE_URL,
   DEFAULT_MAX_RETRIES,
   DEFAULT_TIMEOUT_MS,
-  MAX_SSE_BUFFER_LENGTH,
   RETRYABLE_STATUS_CODES,
   SDK_SERVICE,
-  STREAM_PATH,
 } from "./sdk.config";
 import { createSignature, createTimestamp } from "./signature";
-import { parseSseBuffer } from "./sse-parse";
-import type {
-  SdkError,
-  SdkErrorCategory,
-  StatusResponse,
-  TransportRequest,
-} from "./types";
+import type { SdkError, SdkErrorCategory, TransportRequest } from "./types";
 import { verifyResponseSignature } from "./verify-response";
 
 /** Cached fingerprint for this server instance. */
 const CACHED_FINGERPRINT = generateFingerprint();
-
-/** Handle for an open status stream; `close` aborts it. */
-export type StreamHandle = { close: () => void };
-
-/** Callbacks the status stream drives. */
-export type StreamCallbacks = {
-  onStatus: (status: StatusResponse) => void;
-  /** Stream-level failure (non-2xx, parse/connection error, server `error` event). */
-  onError: (message: string) => void;
-  /** Stream ended without a terminal status (server closed the connection). */
-  onClose: () => void;
-};
-
-/**
- * Derive the status-stream URL from the action `baseUrl`. The stream route lives
- * at the host root (e.g. `https://host/sse/transaction`), not under the action
- * path (`/api/services`).
- */
-function streamUrl(baseUrl: string): string {
-  // Sync helper: `safeTry` is async-only, so a sync URL parse keeps its
-  // try/catch. The catch is narrow and the regex fallback is the only
-  // branching we need.
-  try {
-    return new URL(baseUrl).origin + STREAM_PATH;
-  } catch {
-    return baseUrl.replace(/\/api\/services\/?$/u, "") + STREAM_PATH;
-  }
-}
 
 /** Known failure categories the server tags onto error messages. */
 const KNOWN_CATEGORIES = new Set<SdkErrorCategory>([
@@ -403,130 +367,7 @@ export function createTransport({
     return attempt(0);
   }
 
-  /**
-   * Open an SSE status stream for a transaction. Signs the `{ reference }` body
-   * with the same HMAC protocol as `send`, then reads `text/event-stream`
-   * events. Returns a handle whose `close` aborts the connection.
-   *
-   * Callbacks: `onStatus` per status frame, `onError` on any failure (the caller
-   * decides whether to reconnect or fall back), `onClose` when the server ends
-   * the stream without a terminal status.
-   */
-  function openStream(
-    input: { reference: string } & StreamCallbacks,
-  ): StreamHandle {
-    const controller = new AbortController();
-    let closed = false;
-    const close = () => {
-      if (closed) {
-        return;
-      }
-      closed = true;
-      controller.abort();
-    };
-
-    const payload = {
-      reference: input.reference,
-      _fingerprint: CACHED_FINGERPRINT,
-    };
-    const headers = buildAuthHeaders({ apiKey, apiSecret, payload });
-    const url = streamUrl(baseUrl);
-
-    const run = async () => {
-      const fetchResult = await safeTry(() =>
-        fetchImpl(url, {
-          method: "POST",
-          headers,
-          body: JSON.stringify(payload),
-          signal: controller.signal,
-        }),
-      );
-      if (fetchResult.isErr) {
-        if (!closed) {
-          input.onError(fetchResult.error);
-        }
-        return;
-      }
-      const response = fetchResult.value;
-
-      if (!response.ok || !response.body) {
-        const textResult = await safeTry(() => response.text());
-        const message = textResult.isOk
-          ? textResult.value
-          : `HTTP ${response.status}`;
-        if (!closed) {
-          input.onError(message || `HTTP ${response.status}`);
-        }
-        return;
-      }
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      while (!closed) {
-        const chunkResult = await safeTry(() => reader.read());
-        if (chunkResult.isErr) {
-          if (!closed) {
-            input.onError(chunkResult.error);
-          }
-          return;
-        }
-        const chunk = chunkResult.value;
-        if (chunk.done) {
-          break;
-        }
-
-        buffer += decoder.decode(chunk.value, { stream: true });
-
-        // Bound the buffer. Without a frame separator (`\n\n`) the parser keeps
-        // the whole buffer as `rest`, so a server streaming without separators
-        // (bug or compromise) would grow it without limit. Cap it, close, and
-        // surface an error — the caller falls back to polling. Mirrors the
-        // `error`-frame path: close() then notify unconditionally.
-        if (buffer.length > MAX_SSE_BUFFER_LENGTH) {
-          close();
-          input.onError("SSE buffer exceeded maximum size");
-          return;
-        }
-
-        const { messages, rest } = parseSseBuffer(buffer);
-        buffer = rest;
-
-        for (const message of messages) {
-          if (message.event === "status") {
-            const statusResult = await safeTry(
-              () => JSON.parse(message.data) as StatusResponse,
-            );
-            if (statusResult.isOk) {
-              input.onStatus(statusResult.value);
-            }
-            // Malformed status frame: ignore (the server re-emits current
-            // state on reconnect, so a bad frame is recoverable).
-          } else if (message.event === "error") {
-            const errDataResult = await safeTry(
-              () => JSON.parse(message.data) as { message?: string },
-            );
-            const text = errDataResult.isOk
-              ? (errDataResult.value.message ?? message.data)
-              : message.data;
-            close();
-            input.onError(text);
-            return;
-          }
-        }
-      }
-
-      if (!closed) {
-        input.onClose();
-      }
-    };
-
-    void run();
-    return { close };
-  }
-
-  return { send, openStream, parseError };
+  return { send, parseError };
 }
 
 /**

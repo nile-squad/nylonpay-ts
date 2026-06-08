@@ -25,7 +25,6 @@ import {
   DEFAULT_MAX_POLL_DURATION_MS,
   DEFAULT_MAX_POLL_INTERVAL_MS,
   DEFAULT_MAX_RETRIES,
-  DEFAULT_STREAMING,
   DEFAULT_TIMEOUT_MS,
 } from "./sdk.config";
 import type { NylonPayConfig } from "./types";
@@ -82,7 +81,6 @@ export function createNylonPay(config: NylonPayConfig): NylonPaySdk {
     maxPollIntervalMs: config.maxPollIntervalMs ?? DEFAULT_MAX_POLL_INTERVAL_MS,
     maxPollDurationMs: config.maxPollDurationMs ?? DEFAULT_MAX_POLL_DURATION_MS,
     maxPollAttempts: config.maxPollAttempts ?? DEFAULT_MAX_POLL_ATTEMPTS,
-    streaming: config.streaming ?? DEFAULT_STREAMING,
     fetch: config.fetch ?? globalThis.fetch.bind(globalThis),
     hooks: config.hooks,
   };

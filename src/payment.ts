@@ -8,12 +8,8 @@
 
 import type { Result } from "slang-ts";
 import { createEmitter, type Emitter } from "./pubsub";
-import { MAX_STREAM_RECONNECTS } from "./sdk.config";
-import {
-  parseError,
-  type StreamCallbacks,
-  type StreamHandle,
-} from "./transport";
+import { POLL_JITTER_MS } from "./sdk.config";
+import { parseError } from "./transport";
 import type {
   EventData,
   GetStatusInput,
@@ -26,11 +22,6 @@ import type {
   Transaction,
   TransactionStatus,
 } from "./types";
-
-/** Opens an SSE status stream; injected so tests can drive it without a network. */
-type OpenStream = (
-  input: { reference: string } & StreamCallbacks,
-) => StreamHandle;
 
 /**
  * Internal state for a payment instance.
@@ -54,10 +45,6 @@ type PaymentState = {
   pollIntervalMs: number;
   maxPollDuration: number;
   maxPollAttempts: number;
-  streaming: boolean;
-  openStream?: OpenStream;
-  streamHandle: StreamHandle | null;
-  streamReconnects: number;
 };
 
 /** Map transaction status to payment event. */
@@ -110,8 +97,6 @@ export function createPaymentInstance(
     pollIntervalMs?: number;
     maxPollDuration?: number;
     maxPollAttempts?: number;
-    streaming?: boolean;
-    openStream?: OpenStream;
     /**
      * When set, the operation never started (the backend rejected initiation).
      * The instance emits this as an `"error"` event on the next tick instead of
@@ -134,10 +119,6 @@ export function createPaymentInstance(
     pollIntervalMs: deps.pollIntervalMs ?? 2000,
     maxPollDuration: deps.maxPollDuration ?? 300000,
     maxPollAttempts: deps.maxPollAttempts ?? 150,
-    streaming: deps.streaming ?? false,
-    openStream: deps.openStream,
-    streamHandle: null,
-    streamReconnects: 0,
   };
 
   function resolveWithError(error: string): void {
@@ -249,7 +230,10 @@ export function createPaymentInstance(
 
   /**
    * Schedule the next poll tick.
-   * Uses a single timeout so the next request only starts after the current one finishes.
+   * Uses a single timeout so the next request only starts after the current one
+   * finishes (no overlap). A random jitter is added to the interval so many
+   * concurrent payments don't synchronise into a thundering herd on the status
+   * endpoint.
    * @internal
    */
   function scheduleNextPoll(): void {
@@ -257,10 +241,11 @@ export function createPaymentInstance(
       return;
     }
 
+    const delay = state.pollIntervalMs + Math.random() * POLL_JITTER_MS;
     state.pollingTimer = setTimeout(() => {
       state.pollingTimer = null;
       void pollStatus();
-    }, state.pollIntervalMs);
+    }, delay);
   }
 
   /**
@@ -302,65 +287,9 @@ export function createPaymentInstance(
   }
 
   /**
-   * Close the status stream if one is open.
-   * @internal
-   */
-  function closeStream(): void {
-    if (state.streamHandle) {
-      state.streamHandle.close();
-      state.streamHandle = null;
-    }
-  }
-
-  /**
-   * Open the SSE status stream. Each streamed status drives the same handler a
-   * poll result would; a stream failure reconnects with jittered backoff, then
-   * falls back to polling.
-   * @internal
-   */
-  function startStream(): void {
-    if (state.resolved || !state.openStream) {
-      return;
-    }
-    state.streamHandle = state.openStream({
-      reference: state.reference,
-      onStatus: (status) => {
-        void handleStatusUpdate(status);
-      },
-      onError: () => handleStreamFailure(),
-      onClose: () => handleStreamFailure(),
-    });
-  }
-
-  /**
-   * Handle a stream drop/failure: reconnect a bounded number of times with
-   * jittered backoff, then fall back to polling for the rest of the lifecycle.
-   * @internal
-   */
-  function handleStreamFailure(): void {
-    closeStream();
-    if (state.resolved) {
-      return;
-    }
-    if (state.streamReconnects < MAX_STREAM_RECONNECTS) {
-      state.streamReconnects += 1;
-      const backoff =
-        500 * 2 ** (state.streamReconnects - 1) + Math.random() * 250;
-      setTimeout(() => {
-        if (!state.resolved) {
-          startStream();
-        }
-      }, backoff);
-      return;
-    }
-    scheduleNextPoll();
-  }
-
-  /**
    * Start status updates. If the initial status is already terminal (e.g. sandbox
    * resolves synchronously), emit the terminal event after a tick so handlers
-   * registered after instance creation still fire. Otherwise prefer the SSE
-   * stream, falling back to polling when streaming is disabled.
+   * registered after instance creation still fire. Otherwise begin polling.
    * @internal
    */
   function startUpdates(): void {
@@ -370,15 +299,11 @@ export function createPaymentInstance(
       }, 0);
       return;
     }
-    if (state.streaming && state.openStream) {
-      startStream();
-      return;
-    }
     scheduleNextPoll();
   }
 
   /**
-   * Stop all status updates (poll timer and stream).
+   * Stop all status updates (the poll timer).
    * @internal
    */
   function stopUpdates(): void {
@@ -386,7 +311,6 @@ export function createPaymentInstance(
       clearTimeout(state.pollingTimer);
       state.pollingTimer = null;
     }
-    closeStream();
   }
 
   /**
