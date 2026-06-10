@@ -49,6 +49,37 @@ function generateReference(): string {
 }
 
 /**
+ * PivotPay caps the `merchantTransactionId` (our reference) at 13–15 characters.
+ * The backend echoes the reference verbatim as that id, so an out-of-range
+ * reference is rejected server-side (and historically surfaced as an opaque
+ * provider error). Auto-generated references are always 15 chars; this only
+ * bites when a merchant supplies their own (e.g. a 36-char UUID order id).
+ */
+const REFERENCE_MIN_LENGTH = 13;
+const REFERENCE_MAX_LENGTH = 15;
+
+/**
+ * Resolve the idempotency reference for a create call: auto-generate when the
+ * merchant omits it, otherwise validate their value against the 13–15 char
+ * limit *synchronously* (like validateAmount) so a bad reference throws locally
+ * instead of costing a backend round-trip.
+ */
+function resolveReference(reference?: string): string {
+  if (reference === undefined) {
+    return generateReference();
+  }
+  if (
+    reference.length < REFERENCE_MIN_LENGTH ||
+    reference.length > REFERENCE_MAX_LENGTH
+  ) {
+    throwValidation(
+      `reference must be ${REFERENCE_MIN_LENGTH}–${REFERENCE_MAX_LENGTH} characters`,
+    );
+  }
+  return reference;
+}
+
+/**
  * Run a lifecycle hook safely. A disabled or unset hook is a no-op. The hook's
  * `fn` runs inside `safeTry` so a throw/rejection in merchant code never bubbles
  * into the payment flow — it is routed to the hook's `onError` (which is itself
@@ -134,7 +165,7 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
   async function collectPayment(
     input: CollectPaymentInput,
   ): Promise<PaymentInstance> {
-    const reference = input.reference ?? generateReference();
+    const reference = resolveReference(input.reference);
     validateAmount(input.amount);
     validateNonEmpty(input.customer.name, "customer.name");
     validateNonEmpty(input.customer.phoneNumber, "customer.phoneNumber");
@@ -185,7 +216,7 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
   async function collectPaymentAndResolve(
     input: CollectPaymentInput,
   ): Promise<Result<Transaction, string>> {
-    const reference = input.reference ?? generateReference();
+    const reference = resolveReference(input.reference);
     validateAmount(input.amount);
     validateNonEmpty(input.customer.name, "customer.name");
     validateNonEmpty(input.customer.phoneNumber, "customer.phoneNumber");
@@ -224,7 +255,7 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
    * that emits events as the transaction progresses.
    */
   async function makePayout(input: MakePayoutInput): Promise<PaymentInstance> {
-    const reference = input.reference ?? generateReference();
+    const reference = resolveReference(input.reference);
     validateAmount(input.amount);
     validateNonEmpty(input.customer.name, "customer.name");
     validateNonEmpty(input.customer.phoneNumber, "customer.phoneNumber");
@@ -279,7 +310,7 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
   async function makePayoutAndResolve(
     input: MakePayoutInput,
   ): Promise<Result<Transaction, string>> {
-    const reference = input.reference ?? generateReference();
+    const reference = resolveReference(input.reference);
     validateAmount(input.amount);
     validateNonEmpty(input.customer.name, "customer.name");
     validateNonEmpty(input.customer.phoneNumber, "customer.phoneNumber");
@@ -386,7 +417,7 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
   async function createInvoice(
     input: CreateInvoiceInput,
   ): Promise<Result<InvoiceResponse, string>> {
-    const reference = input.reference ?? generateReference();
+    const reference = resolveReference(input.reference);
     validateAmount(input.amount);
     validateNonEmpty(input.description, "description");
 

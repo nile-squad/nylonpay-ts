@@ -413,6 +413,42 @@ describe("createNylonPay", () => {
       ).rejects.toThrow("description is required");
     });
 
+    it("throws when a supplied reference is too long (e.g. a UUID)", async () => {
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+      });
+
+      await expect(
+        sdk.collectPayment({
+          amount: 1000,
+          currency: "UGX",
+          customer: { name: "Test", phoneNumber: "+256700000000" },
+          description: "Test",
+          reference: "17708a2a-58ed-42d2-88b4-b29e6c7aa216",
+        }),
+      ).rejects.toThrow("reference must be 13–15 characters");
+    });
+
+    it("throws when a supplied reference is too short", async () => {
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+      });
+
+      await expect(
+        sdk.collectPayment({
+          amount: 1000,
+          currency: "UGX",
+          customer: { name: "Test", phoneNumber: "+256700000000" },
+          description: "Test",
+          reference: "short",
+        }),
+      ).rejects.toThrow("reference must be 13–15 characters");
+    });
+
     it("throws when method is bank without bank details", async () => {
       const sdk = createNylonPay({
         apiKey: "npk_test",
