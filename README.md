@@ -61,14 +61,16 @@ const payment = await nylonpay.collectPayment({
   customer: { name: "Jane", phoneNumber: "+256700000000" },
   description: "Order #1234",
   method: "mobileMoney",
-  reference: "ORDER-123",
+  reference: "ORDER-2026-001",
 });
 
 payment.on("success", ({ transaction }) => { /* ... */ });
 payment.on("failed", ({ error }) => { /* ... */ });
 ```
 
-`reference` is optional and auto-generated if omitted.
+`reference` is optional and auto-generated if omitted. A supplied reference must be
+**13 to 15 characters**; the SDK throws a `validation` error otherwise. A raw UUID is
+36 characters and will be rejected, so use a short id of your own or omit the field.
 
 ### collectPaymentAndResolve
 
@@ -120,7 +122,7 @@ const result = await nylonpay.makePayoutAndResolve({
 One-shot status check for a transaction. Does not poll, returns the current server-side state.
 
 ```ts
-const result = await nylonpay.getStatus({ reference: "ORDER-123" });
+const result = await nylonpay.getStatus({ reference: "ORDER-2026-001" });
 if (result.isOk) console.log(result.value.status);
 ```
 
@@ -129,7 +131,7 @@ if (result.isOk) console.log(result.value.status);
 Look up a full transaction record by `id` or `reference`. At least one must be provided.
 
 ```ts
-const result = await nylonpay.getTransaction({ reference: "ORDER-123" });
+const result = await nylonpay.getTransaction({ reference: "ORDER-2026-001" });
 if (result.isOk) console.log(result.value.failureReason);
 ```
 
@@ -216,7 +218,7 @@ All operations return `Result<T, string>` from [slang-ts](https://github.com/nil
 ```ts
 import { parseError } from "@nile-squad/nylonpay-ts";
 
-const result = await nylonpay.getStatus({ reference: "ORDER-123" });
+const result = await nylonpay.getStatus({ reference: "ORDER-2026-001" });
 if (!result.isOk) {
   const error = parseError(result.error);
   if (error.retryable) {

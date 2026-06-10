@@ -442,7 +442,7 @@ export type TransportResult<T> = Result<T, string>;
  * @example
  * ```ts
  * payment.on("success", (data: EventData) => {
- *   console.log(data.transaction?.reference); // "ORDER-123"
+ *   console.log(data.transaction?.reference); // "ORDER-2026-001"
  *   console.log(data.timestamp);              // "2026-05-30T12:00:00.000Z"
  * });
  * ```
@@ -586,7 +586,7 @@ export interface NylonPaySdk {
    *
    * @example
    * ```ts
-   * const result = await nylonpay.getStatus({ reference: "ORDER-123" });
+   * const result = await nylonpay.getStatus({ reference: "ORDER-2026-001" });
    * if (result.isOk) console.log(result.value.status); // "successful"
    * ```
    */
@@ -599,7 +599,7 @@ export interface NylonPaySdk {
    *
    * @example
    * ```ts
-   * const result = await nylonpay.getTransaction({ reference: "ORDER-123" });
+   * const result = await nylonpay.getTransaction({ reference: "ORDER-2026-001" });
    * if (result.isOk) console.log(result.value.failureReason);
    * ```
    */

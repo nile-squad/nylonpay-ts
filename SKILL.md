@@ -36,7 +36,7 @@ Every operation that returns data returns `Result<T, string>` from
 before touching `.value`.** Do not throw/try-catch around these.
 
 ```ts
-const result = await nylonpay.getStatus({ reference: "ORDER-123" });
+const result = await nylonpay.getStatus({ reference: "ORDER-2026-001" });
 if (!result.isOk) {
   const error = parseError(result.error); // structured: { message, retryable, ... }
   if (error.retryable) { /* safe to retry */ }
@@ -74,7 +74,7 @@ const payment = await nylonpay.collectPayment({
   customer: { name: "Jane", phoneNumber: "+256700000000" },
   description: "Order #1234",
   method: "mobileMoney",
-  reference: "ORDER-123", // optional, auto-generated if omitted
+  reference: "ORDER-2026-001", // optional, auto-generated if omitted
 });
 
 payment.on("success", ({ transaction }) => fulfillOrder(transaction));
@@ -104,6 +104,8 @@ if (!isValid) return res.status(401).send("Invalid signature");
   will fail verification.
 - Card payments are only supported through the hosted `createInvoice` flow.
 - Make payment requests **idempotent** by passing a stable `reference` you own.
+  A supplied reference must be **13 to 15 characters** or the SDK throws a
+  `validation` error. Never pass a raw 36-character UUID.
 - This SDK is the reference implementation of the language-agnostic
   [Nylon Pay SDK Spec](https://github.com/nile-squad/specs/blob/main/nylon-pay/sdk-spec.md);
   consult it for protocol-level questions.

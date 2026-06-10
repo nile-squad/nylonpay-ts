@@ -18,7 +18,7 @@
  * const payment = await nylonpay.collectPayment({
  *   amount: 10000,
  *   currency: "UGX",
- *   reference: "ORDER-123",
+ *   reference: "ORDER-2026-001",
  *   method: "mobileMoney",
  *   description: "Mobile money payment",
  *   customer: { name: "John", phoneNumber: "+256700000000" },

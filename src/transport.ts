@@ -378,7 +378,7 @@ export function createTransport({
  *
  * @example
  * ```ts
- * const result = await sdk.getStatus({ reference: "ORDER-123" });
+ * const result = await sdk.getStatus({ reference: "ORDER-2026-001" });
  * if (!result.isOk) {
  *   const error = parseError(result.error);
  *   console.log(error.category, error.message);
