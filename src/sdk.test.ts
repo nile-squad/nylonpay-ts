@@ -344,6 +344,138 @@ describe("createNylonPay", () => {
     });
   });
 
+  describe("phone normalization", () => {
+    it("collectPayment sends normalized phone to transport", async () => {
+      mockSend.mockResolvedValue(
+        Ok({ reference: "test-ref", status: "pending" }),
+      );
+
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+      });
+
+      await sdk.collectPayment({
+        amount: 1000,
+        currency: "UGX",
+        customer: { name: "Test", phoneNumber: "0768499027" },
+        description: "Test payment",
+      });
+
+      const request = mockSend.mock.calls[0][0];
+      expect(request.payload.customer.phoneNumber).toBe("256768499027");
+    });
+
+    it("collectPaymentAndResolve sends normalized phone to transport", async () => {
+      mockSend.mockResolvedValue(Ok(mockTransaction));
+
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+      });
+
+      await sdk.collectPaymentAndResolve({
+        amount: 1000,
+        currency: "UGX",
+        customer: { name: "Test", phoneNumber: "0768499027" },
+        description: "Test payment",
+      });
+
+      const request = mockSend.mock.calls[0][0];
+      expect(request.payload.customer.phoneNumber).toBe("256768499027");
+    });
+
+    it("makePayout sends normalized phone to transport", async () => {
+      mockSend.mockResolvedValue(
+        Ok({ reference: "payout-ref", status: "pending" }),
+      );
+
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+      });
+
+      await sdk.makePayout({
+        amount: 1000,
+        currency: "UGX",
+        customer: { name: "Test", phoneNumber: "0768499027" },
+        destination: { accountHolderName: "Test", accountNumber: "1234567890" },
+        description: "Test payout",
+      });
+
+      const request = mockSend.mock.calls[0][0];
+      expect(request.payload.customer.phoneNumber).toBe("256768499027");
+    });
+
+    it("makePayoutAndResolve sends normalized phone to transport", async () => {
+      const payoutTx = { ...mockTransaction, type: "payout" as const };
+      mockSend.mockResolvedValue(Ok(payoutTx));
+
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+      });
+
+      await sdk.makePayoutAndResolve({
+        amount: 1000,
+        currency: "UGX",
+        customer: { name: "Test", phoneNumber: "0768499027" },
+        destination: { accountHolderName: "Test", accountNumber: "1234567890" },
+        description: "Test payout",
+      });
+
+      const request = mockSend.mock.calls[0][0];
+      expect(request.payload.customer.phoneNumber).toBe("256768499027");
+    });
+
+    it("verifyPhone sends normalized phone to transport", async () => {
+      mockSend.mockResolvedValue(
+        Ok({
+          phoneNumber: "+256700000000",
+          customerName: "Test User",
+          verified: true,
+        }),
+      );
+
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+      });
+
+      await sdk.verifyPhone({ phoneNumber: "0768499027" });
+
+      const request = mockSend.mock.calls[0][0];
+      expect(request.payload.phoneNumber).toBe("256768499027");
+    });
+
+    it("leaves already-normalized phones unchanged", async () => {
+      mockSend.mockResolvedValue(
+        Ok({ reference: "test-ref", status: "pending" }),
+      );
+
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+      });
+
+      await sdk.collectPayment({
+        amount: 1000,
+        currency: "UGX",
+        customer: { name: "Test", phoneNumber: "+256768499027" },
+        description: "Test payment",
+      });
+
+      const request = mockSend.mock.calls[0][0];
+      expect(request.payload.customer.phoneNumber).toBe("256768499027");
+    });
+  });
+
   describe("input validation", () => {
     it("throws on zero amount for collectPayment", async () => {
       const sdk = createNylonPay({

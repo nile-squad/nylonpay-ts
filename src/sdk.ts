@@ -26,6 +26,7 @@ import type {
   VerifyPhoneInput,
   VerifyWebhookInput,
 } from "./types";
+import { normalizePhone } from "./phone";
 import { verifyWebhookSignature } from "./verify-webhook";
 
 export type { NylonPaySdk } from "./types";
@@ -169,12 +170,13 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
     validateAmount(input.amount);
     validateNonEmpty(input.customer.name, "customer.name");
     validateNonEmpty(input.customer.phoneNumber, "customer.phoneNumber");
+    const normalizedPhone = normalizePhone(input.customer.phoneNumber);
     validateNonEmpty(input.description, "description");
     if (input.method === "bank" && !input.bank) {
       throwValidation('bank details are required when method is "bank"');
     }
 
-    let payload = { ...input, reference };
+    let payload = { ...input, reference, customer: { ...input.customer, phoneNumber: normalizedPhone } };
     const mutated = await runHook(config.hooks?.beforeCollect, payload);
     if (mutated != null)
       payload = { ...mutated, reference: mutated.reference ?? reference };
@@ -220,12 +222,13 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
     validateAmount(input.amount);
     validateNonEmpty(input.customer.name, "customer.name");
     validateNonEmpty(input.customer.phoneNumber, "customer.phoneNumber");
+    const normalizedPhone = normalizePhone(input.customer.phoneNumber);
     validateNonEmpty(input.description, "description");
     if (input.method === "bank" && !input.bank) {
       throwValidation('bank details are required when method is "bank"');
     }
 
-    let payload = { ...input, reference };
+    let payload = { ...input, reference, customer: { ...input.customer, phoneNumber: normalizedPhone } };
     const mutated = await runHook(config.hooks?.beforeCollect, payload);
     if (mutated != null)
       payload = { ...mutated, reference: mutated.reference ?? reference };
@@ -259,6 +262,7 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
     validateAmount(input.amount);
     validateNonEmpty(input.customer.name, "customer.name");
     validateNonEmpty(input.customer.phoneNumber, "customer.phoneNumber");
+    const normalizedPhone = normalizePhone(input.customer.phoneNumber);
     validateNonEmpty(input.description, "description");
     validateNonEmpty(
       input.destination.accountHolderName,
@@ -269,7 +273,7 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
       "destination.accountNumber",
     );
 
-    let payload = { ...input, reference };
+    let payload = { ...input, reference, customer: { ...input.customer, phoneNumber: normalizedPhone } };
     const mutated = await runHook(config.hooks?.beforePayout, payload);
     if (mutated != null)
       payload = { ...mutated, reference: mutated.reference ?? reference };
@@ -314,6 +318,7 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
     validateAmount(input.amount);
     validateNonEmpty(input.customer.name, "customer.name");
     validateNonEmpty(input.customer.phoneNumber, "customer.phoneNumber");
+    const normalizedPhone = normalizePhone(input.customer.phoneNumber);
     validateNonEmpty(input.description, "description");
     validateNonEmpty(
       input.destination.accountHolderName,
@@ -324,7 +329,7 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
       "destination.accountNumber",
     );
 
-    let payload = { ...input, reference };
+    let payload = { ...input, reference, customer: { ...input.customer, phoneNumber: normalizedPhone } };
     const mutated = await runHook(config.hooks?.beforePayout, payload);
     if (mutated != null)
       payload = { ...mutated, reference: mutated.reference ?? reference };
@@ -398,10 +403,11 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
     input: VerifyPhoneInput,
   ): Promise<Result<PhoneVerification, string>> {
     validateNonEmpty(input.phoneNumber, "phoneNumber");
+    const normalizedPhone = normalizePhone(input.phoneNumber);
 
     const result = await transport.send<PhoneVerification>({
       action: SDK_ACTIONS.verifyPhone,
-      payload: input,
+      payload: { ...input, phoneNumber: normalizedPhone },
     });
 
     if (result.isOk) {
