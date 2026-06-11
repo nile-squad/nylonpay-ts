@@ -2,7 +2,7 @@
 
 Server-side SDK for integrating Nylon Pay into merchant applications. Supports TypeScript and JavaScript (ESM and CJS).
 
-This package is the reference implementation of the [Nylon Pay SDK Spec](https://github.com/nile-squad/specs/blob/main/nylon-pay/sdk-spec.md) — the canonical, language-agnostic contract for building Nylon Pay SDKs in any language.
+This package is the reference implementation of the [Nylon Pay SDK Spec](https://github.com/nile-squad/specs/blob/main/nylonpay-sdk-spec/spec.md) — the canonical, language-agnostic contract for building Nylon Pay SDKs in any language.
 
 [Full documentation](https://docs.nylonpay.nilesquad.com/docs)
 

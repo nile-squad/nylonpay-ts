@@ -107,7 +107,7 @@ if (!isValid) return res.status(401).send("Invalid signature");
   A supplied reference must be **13 to 15 characters** or the SDK throws a
   `validation` error. Never pass a raw 36-character UUID.
 - This SDK is the reference implementation of the language-agnostic
-  [Nylon Pay SDK Spec](https://github.com/nile-squad/specs/blob/main/nylon-pay/sdk-spec.md);
+  [Nylon Pay SDK Spec](https://github.com/nile-squad/specs/blob/main/nylonpay-sdk-spec/spec.md);
   consult it for protocol-level questions.
 
 ## Maintaining this package
