@@ -38,7 +38,7 @@ describe("createInvoice", () => {
   });
 
   it.skip("reuses the same reference when provided (idempotency)", async () => {
-    const ref = `inv-idem-${Date.now()}`;
+    const ref = `iv${String(Date.now()).slice(-11)}`;
 
     const first = await sdk.createInvoice({
       amount: 2000,

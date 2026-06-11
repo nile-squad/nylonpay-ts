@@ -42,7 +42,7 @@ describe("collectPayment", () => {
   });
 
   it("I3: reuses the same transaction for a repeated reference (idempotency)", async () => {
-    const ref = `idem-${Date.now()}`;
+    const ref = `id${String(Date.now()).slice(-11)}`;
     // Use a different amount to avoid the dup cache on the first call.
     const amount = RUN_AMOUNT + 1;
 
@@ -96,7 +96,7 @@ describe("collectPayment", () => {
   }, 30_000);
 
   it("I18: metadata round-trips through getTransaction", async () => {
-    const ref = `meta-${Date.now()}`;
+    const ref = `mt${String(Date.now()).slice(-11)}`;
     await sdk.collectPayment({
       amount: RUN_AMOUNT + 4,
       currency: "UGX",

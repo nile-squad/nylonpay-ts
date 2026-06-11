@@ -68,7 +68,7 @@ describe("makePayout", () => {
   }, 30_000);
 
   it("I6: reuses the same transaction for a repeated reference (idempotency)", async () => {
-    const ref = `payout-idem-${Date.now()}`;
+    const ref = `pt${String(Date.now()).slice(-11)}`;
     const amount = RUN_AMOUNT + 2;
 
     const first = await sdk.makePayout({
