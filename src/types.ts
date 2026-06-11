@@ -210,6 +210,12 @@ export type Transaction = {
   type: TransactionType;
   method: PaymentMethod;
   description: string;
+  /**
+   * Present (true) when this response replayed an existing transaction because
+   * the reference was already used — same reference, same transaction. No new
+   * payment was initiated; use a fresh reference to start a new one.
+   */
+  duplicate?: boolean;
   phone: string;
   email: string | null;
   failureReason: string | null;
@@ -387,6 +393,9 @@ export type SdkAuthHeaders = {
  * - `rate_limit` — too many requests.
  * - `account` — merchant account missing or not active.
  * - `provider` — payment provider/engine rejected the operation.
+ * - `duplicate` — the reference was already used for another transaction.
+ *   Retrying with a NEW reference will pass; reusing the same reference
+ *   replays the existing transaction instead of charging again.
  * - `not_found` — referenced transaction does not exist.
  * - `internal` — unexpected server-side failure.
  * - `network` — request never reached the server (DNS, TLS, connection).
@@ -399,6 +408,7 @@ export type SdkErrorCategory =
   | "rate_limit"
   | "account"
   | "provider"
+  | "duplicate"
   | "not_found"
   | "internal"
   | "network"

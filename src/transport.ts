@@ -31,6 +31,7 @@ const KNOWN_CATEGORIES = new Set<SdkErrorCategory>([
   "rate_limit",
   "account",
   "provider",
+  "duplicate",
   "not_found",
   "internal",
   "network",

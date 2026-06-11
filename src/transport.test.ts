@@ -380,6 +380,14 @@ describe("parseError", () => {
     expect(error.message).toBe("Transaction not found");
   });
 
+  it("parses the duplicate category for reused references", () => {
+    const error = parseError(
+      "Duplicate reference — a transaction with this reference already exists. References must be unique per transaction: retry with a new reference, or fetch the existing transaction by reference instead. -- error-type: duplicate",
+    );
+    expect(error.category).toBe("duplicate");
+    expect(error.message).toContain("retry with a new reference");
+  });
+
   it("falls back to internal for an untagged message", () => {
     const error = parseError("some random error");
     expect(error.category).toBe("internal");
