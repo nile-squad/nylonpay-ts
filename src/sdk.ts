@@ -114,10 +114,23 @@ function throwValidation(message: string): never {
   throw createSdkError({ category: "validation", message });
 }
 
-/** Validate that amount is a positive integer. */
-function validateAmount(amount: number): void {
+/** Validate collection amount is a positive integer >= 500. */
+function validateCollectionAmount(amount: number): void {
   if (!Number.isInteger(amount) || amount <= 0) {
     throwValidation("amount must be a positive integer");
+  }
+  if (amount < 500) {
+    throwValidation("Collection amount must be at least 500 UGX");
+  }
+}
+
+/** Validate payout amount is a positive integer >= 5000. */
+function validatePayoutAmount(amount: number): void {
+  if (!Number.isInteger(amount) || amount <= 0) {
+    throwValidation("amount must be a positive integer");
+  }
+  if (amount < 5000) {
+    throwValidation("Payout amount must be at least 5000 UGX");
   }
 }
 
@@ -167,7 +180,7 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
     input: CollectPaymentInput,
   ): Promise<PaymentInstance> {
     const reference = resolveReference(input.reference);
-    validateAmount(input.amount);
+    validateCollectionAmount(input.amount);
     validateNonEmpty(input.customer.name, "customer.name");
     validateNonEmpty(input.customer.phoneNumber, "customer.phoneNumber");
     const normalizedPhone = normalizePhone(input.customer.phoneNumber);
@@ -219,7 +232,7 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
     input: CollectPaymentInput,
   ): Promise<Result<Transaction, string>> {
     const reference = resolveReference(input.reference);
-    validateAmount(input.amount);
+    validateCollectionAmount(input.amount);
     validateNonEmpty(input.customer.name, "customer.name");
     validateNonEmpty(input.customer.phoneNumber, "customer.phoneNumber");
     const normalizedPhone = normalizePhone(input.customer.phoneNumber);
@@ -259,7 +272,7 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
    */
   async function makePayout(input: MakePayoutInput): Promise<PaymentInstance> {
     const reference = resolveReference(input.reference);
-    validateAmount(input.amount);
+    validatePayoutAmount(input.amount);
     validateNonEmpty(input.customer.name, "customer.name");
     validateNonEmpty(input.customer.phoneNumber, "customer.phoneNumber");
     const normalizedPhone = normalizePhone(input.customer.phoneNumber);
@@ -315,7 +328,7 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
     input: MakePayoutInput,
   ): Promise<Result<Transaction, string>> {
     const reference = resolveReference(input.reference);
-    validateAmount(input.amount);
+    validatePayoutAmount(input.amount);
     validateNonEmpty(input.customer.name, "customer.name");
     validateNonEmpty(input.customer.phoneNumber, "customer.phoneNumber");
     const normalizedPhone = normalizePhone(input.customer.phoneNumber);
@@ -424,7 +437,7 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
     input: CreateInvoiceInput,
   ): Promise<Result<InvoiceResponse, string>> {
     const reference = resolveReference(input.reference);
-    validateAmount(input.amount);
+    validateCollectionAmount(input.amount);
     validateNonEmpty(input.description, "description");
 
     if (input.items) {

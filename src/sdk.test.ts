@@ -200,7 +200,7 @@ describe("createNylonPay", () => {
       });
 
       const instance = await sdk.makePayout({
-        amount: 1000,
+        amount: 5000,
         currency: "UGX",
         customer: { name: "Test", phoneNumber: "+256700000000" },
         destination: { accountHolderName: "Test", accountNumber: "1234567890" },
@@ -221,7 +221,7 @@ describe("createNylonPay", () => {
       });
 
       const result = await sdk.makePayoutAndResolve({
-        amount: 1000,
+        amount: 5000,
         currency: "UGX",
         customer: { name: "Test", phoneNumber: "+256700000000" },
         destination: { accountHolderName: "Test", accountNumber: "1234567890" },
@@ -399,7 +399,7 @@ describe("createNylonPay", () => {
       });
 
       await sdk.makePayout({
-        amount: 1000,
+        amount: 5000,
         currency: "UGX",
         customer: { name: "Test", phoneNumber: "0768499027" },
         destination: { accountHolderName: "Test", accountNumber: "1234567890" },
@@ -421,7 +421,7 @@ describe("createNylonPay", () => {
       });
 
       await sdk.makePayoutAndResolve({
-        amount: 1000,
+        amount: 5000,
         currency: "UGX",
         customer: { name: "Test", phoneNumber: "0768499027" },
         destination: { accountHolderName: "Test", accountNumber: "1234567890" },
@@ -650,6 +650,84 @@ describe("createNylonPay", () => {
         }),
       ).rejects.toThrow("item quantity must be a positive integer");
     });
+
+    it("collectPayment rejects amount < 500", async () => {
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+      });
+
+      await expect(
+        sdk.collectPayment({
+          amount: 499,
+          currency: "UGX",
+          customer: { name: "Test", phoneNumber: "+256700000000" },
+          description: "Test",
+        }),
+      ).rejects.toThrow("Collection amount must be at least 500 UGX");
+    });
+
+    it("collectPayment accepts amount = 500", async () => {
+      mockSend.mockResolvedValue(
+        Ok({ reference: "test-ref", status: "pending" }),
+      );
+
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+      });
+
+      const instance = await sdk.collectPayment({
+        amount: 500,
+        currency: "UGX",
+        customer: { name: "Test", phoneNumber: "+256700000000" },
+        description: "Test",
+      });
+
+      expect(instance.reference).toBe("test-ref");
+    });
+
+    it("makePayout rejects amount < 5000", async () => {
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+      });
+
+      await expect(
+        sdk.makePayout({
+          amount: 4999,
+          currency: "UGX",
+          customer: { name: "Test", phoneNumber: "+256700000000" },
+          destination: { accountHolderName: "Test", accountNumber: "1234567890" },
+          description: "Test",
+        }),
+      ).rejects.toThrow("Payout amount must be at least 5000 UGX");
+    });
+
+    it("makePayout accepts amount = 5000", async () => {
+      mockSend.mockResolvedValue(
+        Ok({ reference: "payout-ref", status: "pending" }),
+      );
+
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+      });
+
+      const instance = await sdk.makePayout({
+        amount: 5000,
+        currency: "UGX",
+        customer: { name: "Test", phoneNumber: "+256700000000" },
+        destination: { accountHolderName: "Test", accountNumber: "1234567890" },
+        description: "Test",
+      });
+
+      expect(instance.reference).toBe("payout-ref");
+    });
   });
 
   describe("hooks", () => {
@@ -660,7 +738,7 @@ describe("createNylonPay", () => {
       description: "Test payment",
     };
     const basePayoutInput = {
-      amount: 1000,
+      amount: 5000,
       currency: "UGX" as const,
       customer: { name: "Test", phoneNumber: "+256700000000" },
       destination: { accountHolderName: "Test", accountNumber: "1234567890" },
@@ -893,7 +971,7 @@ describe("createNylonPay", () => {
       });
 
       const instance = await sdk.makePayout({
-        amount: 1000,
+        amount: 5000,
         currency: "UGX",
         customer: { name: "Jane", phoneNumber: "+256700000000" },
         destination: {
