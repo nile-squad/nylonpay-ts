@@ -701,7 +701,10 @@ describe("createNylonPay", () => {
           amount: 4999,
           currency: "UGX",
           customer: { name: "Test", phoneNumber: "+256700000000" },
-          destination: { accountHolderName: "Test", accountNumber: "1234567890" },
+          destination: {
+            accountHolderName: "Test",
+            accountNumber: "1234567890",
+          },
           description: "Test",
         }),
       ).rejects.toThrow("Payout amount must be at least 5000 UGX");

@@ -6,6 +6,7 @@
 import { randomBytes } from "node:crypto";
 import { Err, Ok, type Result, safeTry } from "slang-ts";
 import { createPaymentInstance } from "./payment";
+import { normalizePhone } from "./phone";
 import { SDK_ACTIONS } from "./sdk.config";
 import { createSdkError, createTransport, parseError } from "./transport";
 import type {
@@ -26,7 +27,6 @@ import type {
   VerifyPhoneInput,
   VerifyWebhookInput,
 } from "./types";
-import { normalizePhone } from "./phone";
 import { verifyWebhookSignature } from "./verify-webhook";
 
 export type { NylonPaySdk } from "./types";
@@ -189,7 +189,11 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
       throwValidation('bank details are required when method is "bank"');
     }
 
-    let payload = { ...input, reference, customer: { ...input.customer, phoneNumber: normalizedPhone } };
+    let payload = {
+      ...input,
+      reference,
+      customer: { ...input.customer, phoneNumber: normalizedPhone },
+    };
     const mutated = await runHook(config.hooks?.beforeCollect, payload);
     if (mutated != null)
       payload = { ...mutated, reference: mutated.reference ?? reference };
@@ -241,7 +245,11 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
       throwValidation('bank details are required when method is "bank"');
     }
 
-    let payload = { ...input, reference, customer: { ...input.customer, phoneNumber: normalizedPhone } };
+    let payload = {
+      ...input,
+      reference,
+      customer: { ...input.customer, phoneNumber: normalizedPhone },
+    };
     const mutated = await runHook(config.hooks?.beforeCollect, payload);
     if (mutated != null)
       payload = { ...mutated, reference: mutated.reference ?? reference };
@@ -286,7 +294,11 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
       "destination.accountNumber",
     );
 
-    let payload = { ...input, reference, customer: { ...input.customer, phoneNumber: normalizedPhone } };
+    let payload = {
+      ...input,
+      reference,
+      customer: { ...input.customer, phoneNumber: normalizedPhone },
+    };
     const mutated = await runHook(config.hooks?.beforePayout, payload);
     if (mutated != null)
       payload = { ...mutated, reference: mutated.reference ?? reference };
@@ -342,7 +354,11 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
       "destination.accountNumber",
     );
 
-    let payload = { ...input, reference, customer: { ...input.customer, phoneNumber: normalizedPhone } };
+    let payload = {
+      ...input,
+      reference,
+      customer: { ...input.customer, phoneNumber: normalizedPhone },
+    };
     const mutated = await runHook(config.hooks?.beforePayout, payload);
     if (mutated != null)
       payload = { ...mutated, reference: mutated.reference ?? reference };
