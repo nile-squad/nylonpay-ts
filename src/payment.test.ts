@@ -147,6 +147,126 @@ describe("createPaymentInstance", () => {
       expect(handler).toHaveBeenCalledTimes(1);
     });
 
+    it("emits processing for the initial pending status without a status change", async () => {
+      const handler = vi.fn();
+      const deps = createMockDeps();
+      // Backend keeps reporting "pending" — previously no event ever fired.
+      deps.fetchStatus.mockResolvedValue(
+        Ok({
+          reference: "test-ref",
+          status: "pending",
+          amount: 1000,
+          currency: "UGX",
+          updatedAt: "2024-01-01T00:00:01Z",
+        }),
+      );
+
+      const instance = createPaymentInstance(
+        { reference: "test-ref", status: "pending" },
+        deps,
+      );
+      instance.on("processing", handler);
+
+      await vi.advanceTimersByTimeAsync(0);
+      expect(handler).toHaveBeenCalledTimes(1);
+      expect(handler).toHaveBeenCalledWith(
+        expect.objectContaining({ event: "processing", reference: "test-ref" }),
+      );
+
+      // Subsequent pending polls must not re-fire it.
+      await vi.advanceTimersByTimeAsync(30);
+      expect(handler).toHaveBeenCalledTimes(1);
+    });
+
+    it("fires processing then success when the payment resolves between polls", async () => {
+      const events: string[] = [];
+      const deps = createMockDeps();
+      // First poll already terminal — the pending → successful jump that
+      // previously swallowed the "processing" lifecycle event.
+      deps.fetchStatus.mockResolvedValue(
+        Ok({
+          reference: "test-ref",
+          status: "successful",
+          amount: 1000,
+          currency: "UGX",
+          updatedAt: "2024-01-01T00:00:01Z",
+        }),
+      );
+      deps.fetchTransaction.mockResolvedValue(Ok(mockTransaction));
+
+      const instance = createPaymentInstance(
+        { reference: "test-ref", status: "pending" },
+        deps,
+      );
+      instance.on("processing", () => events.push("processing"));
+      instance.on("success", () => events.push("success"));
+
+      await vi.advanceTimersByTimeAsync(10);
+
+      expect(events).toEqual(["processing", "success"]);
+    });
+
+    it("does not re-fire processing when status moves pending to processing", async () => {
+      const handler = vi.fn();
+      const deps = createMockDeps();
+      deps.fetchStatus
+        .mockResolvedValueOnce(
+          Ok({
+            reference: "test-ref",
+            status: "pending",
+            amount: 1000,
+            currency: "UGX",
+            updatedAt: "2024-01-01T00:00:01Z",
+          }),
+        )
+        .mockResolvedValue(
+          Ok({
+            reference: "test-ref",
+            status: "processing",
+            amount: 1000,
+            currency: "UGX",
+            updatedAt: "2024-01-01T00:00:02Z",
+          }),
+        );
+
+      const instance = createPaymentInstance(
+        { reference: "test-ref", status: "pending" },
+        deps,
+      );
+      instance.on("processing", handler);
+
+      await vi.advanceTimersByTimeAsync(30);
+
+      expect(handler).toHaveBeenCalledTimes(1);
+    });
+
+    it("includes the reference on every event payload", async () => {
+      const handler = vi.fn();
+      const deps = createMockDeps();
+      deps.fetchStatus.mockResolvedValue(
+        Ok({
+          reference: "test-ref",
+          status: "successful",
+          amount: 1000,
+          currency: "UGX",
+          updatedAt: "2024-01-01T00:00:01Z",
+        }),
+      );
+      deps.fetchTransaction.mockResolvedValue(Ok(mockTransaction));
+
+      const instance = createPaymentInstance(
+        { reference: "test-ref", status: "pending" },
+        deps,
+      );
+      instance.on("success", handler);
+
+      await vi.advanceTimersByTimeAsync(10);
+
+      expect(handler).toHaveBeenCalledWith(
+        expect.objectContaining({ event: "success", reference: "test-ref" }),
+      );
+    });
+
     it("emits error event on polling error", async () => {
       const handler = vi.fn();
       const deps = createMockDeps();
@@ -570,6 +690,8 @@ describe("createPaymentInstance", () => {
       instance.on("processing", processing);
 
       await vi.advanceTimersByTimeAsync(10);
+      // The initial in-flight emission fires once before the poll resolves.
+      expect(processing).toHaveBeenCalledTimes(1);
       expect(success).toHaveBeenCalledTimes(1);
 
       // Once resolved, the poll timer is cleared. Advancing well past several
@@ -578,7 +700,7 @@ describe("createPaymentInstance", () => {
       await vi.advanceTimersByTimeAsync(1000);
 
       expect(success).toHaveBeenCalledTimes(1);
-      expect(processing).not.toHaveBeenCalled();
+      expect(processing).toHaveBeenCalledTimes(1);
       expect(deps.fetchTransaction).toHaveBeenCalledTimes(1);
       expect(deps.fetchStatus).toHaveBeenCalledTimes(1);
     });

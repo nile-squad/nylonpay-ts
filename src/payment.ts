@@ -32,6 +32,8 @@ type PaymentState = {
   status: TransactionStatus;
   transaction: Transaction | null;
   pollingTimer: ReturnType<typeof setTimeout> | null;
+  /** Last lifecycle event emitted from a status (dedupes repeat emissions). */
+  lastStatusEvent: PaymentEvent | null;
   resolved: boolean;
   pollAttempts: number;
   pollStartTime: number;
@@ -47,8 +49,14 @@ type PaymentState = {
   maxPollAttempts: number;
 };
 
-/** Map transaction status to payment event. */
+/**
+ * Map transaction status to payment event. Both "pending" and "processing"
+ * map to the "processing" event — to the merchant they are the same lifecycle
+ * moment (payment accepted, in flight, awaiting the customer/provider).
+ * Emission is deduped by event, so pending → processing never double-fires.
+ */
 const STATUS_TO_EVENT: Partial<Record<TransactionStatus, PaymentEvent>> = {
+  pending: "processing",
   successful: "success",
   failed: "failed",
   processing: "processing",
@@ -110,6 +118,7 @@ export function createPaymentInstance(
     status: normalizeStatus(initialResponse.status),
     transaction: null,
     pollingTimer: null,
+    lastStatusEvent: null,
     resolved: false,
     pollAttempts: 0,
     pollStartTime: Date.now(),
@@ -139,6 +148,7 @@ export function createPaymentInstance(
   ): void {
     const data: EventData = {
       event,
+      reference: state.reference,
       transaction: state.transaction ?? undefined,
       error,
       category,
@@ -195,20 +205,22 @@ export function createPaymentInstance(
     }
 
     const newStatus = normalizeStatus(response.status);
-    const oldStatus = state.status;
-
     state.status = newStatus;
 
-    if (newStatus !== oldStatus) {
-      const event = statusToEvent(newStatus);
-      if (event) {
-        if (TERMINAL_STATES.has(newStatus)) {
-          await handleTerminalState(newStatus);
-          return;
-        }
-        emitEvent(event);
-      }
+    // Dedupe by *event*, not raw status — "pending" and "processing" both map
+    // to the "processing" event, and a status flap (processing → pending) must
+    // not re-fire it. Each lifecycle event fires at most once per instance.
+    const event = statusToEvent(newStatus);
+    if (!event || event === state.lastStatusEvent) {
+      return;
     }
+    state.lastStatusEvent = event;
+
+    if (TERMINAL_STATES.has(newStatus)) {
+      await handleTerminalState(newStatus);
+      return;
+    }
+    emitEvent(event);
   }
 
   /**
@@ -289,7 +301,11 @@ export function createPaymentInstance(
   /**
    * Start status updates. If the initial status is already terminal (e.g. sandbox
    * resolves synchronously), emit the terminal event after a tick so handlers
-   * registered after instance creation still fire. Otherwise begin polling.
+   * registered after instance creation still fire. Otherwise emit the initial
+   * in-flight event ("processing") on the next tick — the initiation response
+   * is typically "pending", and a fast payment can jump straight to a terminal
+   * status between polls, which previously meant "processing" never fired —
+   * then begin polling.
    * @internal
    */
   function startUpdates(): void {
@@ -298,6 +314,18 @@ export function createPaymentInstance(
         void handleTerminalState(state.status);
       }, 0);
       return;
+    }
+
+    const initialEvent = statusToEvent(state.status);
+    if (initialEvent) {
+      // Mark as emitted synchronously so a poll result mapping to the same
+      // event cannot race a duplicate in before the timeout fires.
+      state.lastStatusEvent = initialEvent;
+      setTimeout(() => {
+        if (!state.resolved) {
+          emitEvent(initialEvent);
+        }
+      }, 0);
     }
     scheduleNextPoll();
   }

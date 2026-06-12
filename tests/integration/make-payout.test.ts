@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import type { NylonPaySdk } from "../../dist/index.js";
 import { createTestSdk, TEST_PHONE } from "./setup.js";
 
-const RUN_AMOUNT = 1000 + (Date.now() % 8000);
+const RUN_AMOUNT = 5000 + (Date.now() % 8000);
 
 describe("makePayout", () => {
   let sdk: NylonPaySdk;

@@ -68,21 +68,18 @@ describe("error handling", () => {
     }
   });
 
-  it("I14: collectPayment below the minimum amount surfaces a validation error event", async () => {
+  it("I14: collectPayment below the minimum amount throws synchronously", async () => {
     const sdk = createTestSdk();
-    // The backend rejects sub-minimum amounts at initiation. Per Invariant 17,
-    // server-side initiation failures surface via the PaymentInstance "error"
-    // event — they do NOT throw (only client-side validation throws).
-    const instance = await sdk.collectPayment({
-      amount: 100,
-      currency: "UGX",
-      customer: { name: "Test", phoneNumber: TEST_PHONE },
-      description: "below minimum",
-    });
-    const errorData = await new Promise<Record<string, unknown>>((resolve) => {
-      instance.on("error", (data) => resolve(data as Record<string, unknown>));
-    });
-    expect(errorData.category).toBe("validation");
+    // Client-side validateCollectionAmount throws before the request fires
+    // for amounts below 500 UGX.
+    await expect(
+      sdk.collectPayment({
+        amount: 100,
+        currency: "UGX",
+        customer: { name: "Test", phoneNumber: TEST_PHONE },
+        description: "below minimum",
+      }),
+    ).rejects.toThrow("at least 500");
   });
 
   // Live-only: invalid credentials produce an auth error (not testable in sandbox

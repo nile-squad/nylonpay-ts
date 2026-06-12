@@ -216,6 +216,13 @@ export type Transaction = {
    * payment was initiated; use a fresh reference to start a new one.
    */
   duplicate?: boolean;
+  /**
+   * The underlying operator's (telco's/bank's) own transaction id — what the
+   * paying customer sees on their receipt. Use it to cross-validate customer
+   * pay claims. Null until the operator reports it (typically at terminal
+   * status); may be absent on older backend versions.
+   */
+  operatorTid?: string | null;
   phone: string;
   email: string | null;
   failureReason: string | null;
@@ -444,15 +451,17 @@ export type TransportRequest = {
 export type TransportResult<T> = Result<T, string>;
 
 /**
- * Data passed to every payment event handler. `transaction` is populated
- * for status-change events (`processing`, `success`, `failed`, `cancelled`);
- * `error` is populated for the `"error"` event (network failure, timeout,
- * reference mismatch).
+ * Data passed to every payment event handler. `reference` is always present;
+ * `transaction` is populated for terminal status events (`success`, `failed`,
+ * `cancelled`) — the `processing` event can fire before the full record is
+ * fetched, so use `reference` there. `error` is populated for the `"error"`
+ * event (network failure, timeout, reference mismatch).
  *
  * @example
  * ```ts
  * payment.on("success", (data: EventData) => {
- *   console.log(data.transaction?.reference); // "ORDER-2026-001"
+ *   console.log(data.reference);              // "ORDER-2026-001"
+ *   console.log(data.transaction?.id);
  *   console.log(data.timestamp);              // "2026-05-30T12:00:00.000Z"
  * });
  * ```
@@ -460,7 +469,13 @@ export type TransportResult<T> = Result<T, string>;
 export type EventData = {
   /** The event that triggered this handler. */
   event: PaymentEvent;
-  /** Full transaction record. Present for status-change events. */
+  /**
+   * The transaction reference. Always present — available on every event,
+   * including lifecycle events fired before the full transaction record
+   * has been fetched.
+   */
+  reference: string;
+  /** Full transaction record. Present for terminal status events. */
   transaction?: Transaction;
   /** Error message. Present for the `"error"` event. */
   error?: string;
