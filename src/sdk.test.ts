@@ -731,6 +731,44 @@ describe("createNylonPay", () => {
 
       expect(instance.reference).toBe("payout-ref");
     });
+
+    // VULN-002: malformed phone numbers must fail the cheap client-side check
+    // before a network round-trip, not pass through normalizePhone unchanged.
+    it.each([
+      ["not-a-phone", "non-numeric"],
+      ["123", "too short"],
+      ["07684", "partial local format"],
+      ["0000000000000000", "16 digits, too long"],
+    ])("collectPayment throws on invalid phone %s (%s)", async (phoneNumber) => {
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+      });
+
+      await expect(
+        sdk.collectPayment({
+          amount: 1000,
+          currency: "UGX",
+          customer: { name: "Test", phoneNumber },
+          description: "Test",
+        }),
+      ).rejects.toThrow("must be a valid phone number");
+      expect(mockSend).not.toHaveBeenCalled();
+    });
+
+    it("verifyPhone throws on an invalid phone before sending", async () => {
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+      });
+
+      await expect(
+        sdk.verifyPhone({ phoneNumber: "not-a-phone" }),
+      ).rejects.toThrow("must be a valid phone number");
+      expect(mockSend).not.toHaveBeenCalled();
+    });
   });
 
   describe("hooks", () => {
@@ -1097,6 +1135,136 @@ describe("createNylonPay", () => {
       await sdk.collectPayment(baseCollectInput);
 
       expect(order).toEqual(["beforeCollect", "transport"]);
+    });
+
+    // VULN-003: a before* hook runs after validation but must NOT be able to
+    // smuggle invalid values past it (spec invariant #12). The mutated payload
+    // is re-validated; a bad reference/amount throws and nothing is sent.
+    it("re-validates a beforeCollect hook that sets an out-of-range reference", async () => {
+      mockSend.mockResolvedValue(
+        Ok({ reference: "test-ref", status: "pending" }),
+      );
+
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+        hooks: {
+          beforeCollect: {
+            fn: (input) => ({ ...input, reference: "X" }),
+            onError: noop,
+          },
+        },
+      });
+
+      await expect(sdk.collectPayment(baseCollectInput)).rejects.toThrow(
+        "reference must be 13–15 characters",
+      );
+      expect(mockSend).not.toHaveBeenCalled();
+    });
+
+    it("re-validates a beforeCollect hook that sets a sub-minimum amount", async () => {
+      mockSend.mockResolvedValue(
+        Ok({ reference: "test-ref", status: "pending" }),
+      );
+
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+        hooks: {
+          beforeCollect: {
+            fn: (input) => ({ ...input, amount: 1 }),
+            onError: noop,
+          },
+        },
+      });
+
+      await expect(sdk.collectPayment(baseCollectInput)).rejects.toThrow(
+        "Collection amount must be at least 500 UGX",
+      );
+      expect(mockSend).not.toHaveBeenCalled();
+    });
+
+    it("re-validates a beforePayout hook that sets an out-of-range reference", async () => {
+      mockSend.mockResolvedValue(
+        Ok({ reference: "payout-ref", status: "pending" }),
+      );
+
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+        hooks: {
+          beforePayout: {
+            fn: (input) => ({ ...input, reference: "X" }),
+            onError: noop,
+          },
+        },
+      });
+
+      await expect(sdk.makePayout(basePayoutInput)).rejects.toThrow(
+        "reference must be 13–15 characters",
+      );
+      expect(mockSend).not.toHaveBeenCalled();
+    });
+
+    it("re-normalizes a phone mutated by a beforeCollect hook", async () => {
+      mockSend.mockResolvedValue(
+        Ok({ reference: "test-ref", status: "pending" }),
+      );
+
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+        hooks: {
+          beforeCollect: {
+            fn: (input) => ({
+              ...input,
+              customer: { ...input.customer, phoneNumber: "0768499027" },
+            }),
+            onError: noop,
+          },
+        },
+      });
+
+      await sdk.collectPayment(baseCollectInput);
+
+      const sent = mockSend.mock.calls[0][0].payload;
+      expect(sent.customer.phoneNumber).toBe("256768499027");
+    });
+
+    // VULN-004: after* hooks receive the sent payload as `input`, plus the
+    // untouched original merchant input as `input.raw`.
+    it("afterCollect receives the transformed payload and the raw original input", async () => {
+      const afterCollect = vi.fn();
+      mockSend.mockResolvedValue(
+        Ok({ reference: "test-ref", status: "pending" }),
+      );
+
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+        hooks: { afterCollect: { fn: afterCollect, onError: noop } },
+      });
+
+      // Local phone, no reference supplied — both are transformed internally.
+      await sdk.collectPayment({
+        amount: 1000,
+        currency: "UGX",
+        customer: { name: "Test", phoneNumber: "0768499027" },
+        description: "Test payment",
+      });
+
+      const [, input] = afterCollect.mock.calls[0];
+      // `input` is the sent payload: phone normalized, reference auto-generated.
+      expect(input.customer.phoneNumber).toBe("256768499027");
+      expect(input.reference).toHaveLength(15);
+      // `input.raw` is exactly what the merchant passed.
+      expect(input.raw.customer.phoneNumber).toBe("0768499027");
+      expect(input.raw.reference).toBeUndefined();
     });
   });
 

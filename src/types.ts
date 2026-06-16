@@ -289,14 +289,24 @@ export type BeforeCollectHook = (
 ) => CollectPaymentInput | undefined | Promise<CollectPaymentInput | undefined>;
 
 /**
+ * The input handed to an `after*` hook. It is the final wire payload — reference
+ * resolved, phone normalized, and any `before*`-hook mutations applied — so a
+ * hook observes exactly what was sent. The `raw` property additionally carries
+ * the untouched original merchant input (pre-normalization, pre-`before*`-hook),
+ * so audit logs can record both what the merchant typed and what hit the wire.
+ */
+export type AfterHookInput<TInput> = TInput & { raw: TInput };
+
+/**
  * Called after every collect call (both fire-and-forget and resolve variants)
  * regardless of outcome. Use for logging, analytics, or side-effects.
  * The result is normalized to `{ reference, status }` across both variants.
+ * `input` is the sent payload; `input.raw` is the original merchant input.
  * Return value is ignored.
  */
 export type AfterCollectHook = (
   result: Result<{ reference: string; status: string }, string>,
-  input: CollectPaymentInput,
+  input: AfterHookInput<CollectPaymentInput>,
 ) => void | Promise<void>;
 
 /**
@@ -314,7 +324,7 @@ export type BeforePayoutHook = (
  */
 export type AfterPayoutHook = (
   result: Result<{ reference: string; status: string }, string>,
-  input: MakePayoutInput,
+  input: AfterHookInput<MakePayoutInput>,
 ) => void | Promise<void>;
 
 /**

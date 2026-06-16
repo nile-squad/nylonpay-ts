@@ -218,21 +218,32 @@ export function createTransport({
 }) {
   /**
    * Send a request to the backend.
-   * Builds the envelope and headers once, then retries only the fetch call.
+   *
+   * The envelope/body is built once (the payload — including the `reference`
+   * idempotency key — is constant across attempts), but each attempt is signed
+   * fresh: a new nonce, timestamp, and signature per try. This keeps every retry
+   * inside the backend's timestamp-freshness window no matter how long the
+   * backoff runs, and means a retry is never rejected as a nonce replay. Safety
+   * against double-processing rests on the constant `reference` (see D18): the
+   * backend replays the existing transaction for a repeated reference rather
+   * than charging again, and DB-level reference uniqueness backstops any race.
    */
   async function send<T>(
     request: TransportRequest,
   ): Promise<Result<T, string>> {
     const envelope = buildEnvelope(request);
     const signedPayload = (envelope as { payload: unknown }).payload;
-    const headers = buildAuthHeaders({
-      apiKey,
-      apiSecret,
-      payload: signedPayload,
-    });
     const bodyString = JSON.stringify(envelope);
 
     async function attempt(currentAttempt: number): Promise<Result<T, string>> {
+      // Sign per attempt — fresh nonce/timestamp/signature over the constant
+      // payload, so a post-backoff retry carries a current timestamp and a
+      // distinct nonce. See the send() doc for why this is safe.
+      const headers = buildAuthHeaders({
+        apiKey,
+        apiSecret,
+        payload: signedPayload,
+      });
       const { controller, cleanup } = withTimeout(timeoutMs);
 
       try {
@@ -286,7 +297,7 @@ export function createTransport({
           return Err(
             JSON.stringify({
               category: "internal",
-              message: "Response missing status field",
+              message: "Received an invalid response from the server",
               retryable: false,
             } satisfies SdkError),
           );
@@ -313,7 +324,7 @@ export function createTransport({
             return Err(
               JSON.stringify({
                 category: "internal",
-                message: "Response signature missing",
+                message: "Could not verify the server response",
                 retryable: false,
               } satisfies SdkError),
             );
@@ -329,7 +340,7 @@ export function createTransport({
             return Err(
               JSON.stringify({
                 category: "internal",
-                message: "Response signature verification failed",
+                message: "Could not verify the server response",
                 retryable: false,
               } satisfies SdkError),
             );
@@ -351,8 +362,8 @@ export function createTransport({
         const sdkError: SdkError = {
           category: isAbort ? "timeout" : "network",
           message: isAbort
-            ? `Request timed out after ${timeoutMs}ms`
-            : String(error),
+            ? "The request timed out"
+            : "Could not reach the server, check your network connection and try again",
           retryable: true,
         };
 

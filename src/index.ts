@@ -41,6 +41,7 @@ export { createSdkError, parseError } from "./transport";
 // Error type
 export type {
   AfterCollectHook,
+  AfterHookInput,
   AfterPayoutHook,
   BankDetails,
   BeforeCollectHook,

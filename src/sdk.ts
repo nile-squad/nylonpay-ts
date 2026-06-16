@@ -6,7 +6,7 @@
 import { randomBytes } from "node:crypto";
 import { Err, Ok, type Result, safeTry } from "slang-ts";
 import { createPaymentInstance } from "./payment";
-import { normalizePhone } from "./phone";
+import { isValidPhoneFormat, normalizePhone } from "./phone";
 import { SDK_ACTIONS } from "./sdk.config";
 import { createSdkError, createTransport, parseError } from "./transport";
 import type {
@@ -142,6 +142,95 @@ function validateNonEmpty(value: string, fieldName: string): void {
 }
 
 /**
+ * Validate a normalized phone number's format synchronously, mirroring the
+ * backend's cheap check so malformed input (e.g. "not-a-phone", "123") fails
+ * before a network round-trip instead of surfacing as an opaque provider error.
+ */
+function validatePhoneFormat(normalizedPhone: string, fieldName: string): void {
+  if (!isValidPhoneFormat(normalizedPhone)) {
+    throwValidation(`${fieldName} must be a valid phone number`);
+  }
+}
+
+/**
+ * Validate and normalize a collect input into the wire payload. Runs every
+ * synchronous check (reference length, amount, required fields, phone format)
+ * and returns the payload with the reference resolved and the phone normalized.
+ *
+ * WHY a single helper: it is run twice — once on the original input and again on
+ * a `before*` hook's mutated output — so a hook can never bypass validation
+ * (invariant #12). Sharing one function keeps the two passes identical.
+ */
+function prepareCollectPayload(
+  input: CollectPaymentInput,
+): CollectPaymentInput & { reference: string } {
+  const reference = resolveReference(input.reference);
+  validateCollectionAmount(input.amount);
+  validateNonEmpty(input.customer.name, "customer.name");
+  validateNonEmpty(input.customer.phoneNumber, "customer.phoneNumber");
+  const normalizedPhone = normalizePhone(input.customer.phoneNumber);
+  validatePhoneFormat(normalizedPhone, "customer.phoneNumber");
+  validateNonEmpty(input.description, "description");
+  if (input.method === "bank" && !input.bank) {
+    throwValidation('bank details are required when method is "bank"');
+  }
+
+  return {
+    ...input,
+    reference,
+    customer: { ...input.customer, phoneNumber: normalizedPhone },
+  };
+}
+
+/**
+ * Validate and normalize a payout input into the wire payload. Payout sibling of
+ * {@link prepareCollectPayload} — run on both the original input and any
+ * `before*` hook output so hooks cannot bypass validation (invariant #12).
+ */
+function preparePayoutPayload(
+  input: MakePayoutInput,
+): MakePayoutInput & { reference: string } {
+  const reference = resolveReference(input.reference);
+  validatePayoutAmount(input.amount);
+  validateNonEmpty(input.customer.name, "customer.name");
+  validateNonEmpty(input.customer.phoneNumber, "customer.phoneNumber");
+  const normalizedPhone = normalizePhone(input.customer.phoneNumber);
+  validatePhoneFormat(normalizedPhone, "customer.phoneNumber");
+  validateNonEmpty(input.description, "description");
+  validateNonEmpty(
+    input.destination.accountHolderName,
+    "destination.accountHolderName",
+  );
+  validateNonEmpty(
+    input.destination.accountNumber,
+    "destination.accountNumber",
+  );
+
+  return {
+    ...input,
+    reference,
+    customer: { ...input.customer, phoneNumber: normalizedPhone },
+  };
+}
+
+/**
+ * Apply a `before*` hook's mutated output and re-validate it. Returns the
+ * re-prepared wire payload. The resolved reference is preserved when the hook
+ * omits one (keeps the original idempotency key), and the full validation suite
+ * re-runs so the hook cannot smuggle invalid values past the checks.
+ */
+function applyBeforeHookMutation<TInput extends { reference?: string }>(
+  mutated: TInput,
+  current: TInput & { reference: string },
+  prepare: (input: TInput) => TInput & { reference: string },
+): TInput & { reference: string } {
+  return prepare({
+    ...mutated,
+    reference: mutated.reference ?? current.reference,
+  });
+}
+
+/**
  * Create an SDK instance with resolved configuration.
  * Returns an object implementing the NylonPaySdk interface.
  */
@@ -179,24 +268,15 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
   async function collectPayment(
     input: CollectPaymentInput,
   ): Promise<PaymentInstance> {
-    const reference = resolveReference(input.reference);
-    validateCollectionAmount(input.amount);
-    validateNonEmpty(input.customer.name, "customer.name");
-    validateNonEmpty(input.customer.phoneNumber, "customer.phoneNumber");
-    const normalizedPhone = normalizePhone(input.customer.phoneNumber);
-    validateNonEmpty(input.description, "description");
-    if (input.method === "bank" && !input.bank) {
-      throwValidation('bank details are required when method is "bank"');
-    }
-
-    let payload = {
-      ...input,
-      reference,
-      customer: { ...input.customer, phoneNumber: normalizedPhone },
-    };
+    let payload = prepareCollectPayload(input);
     const mutated = await runHook(config.hooks?.beforeCollect, payload);
-    if (mutated != null)
-      payload = { ...mutated, reference: mutated.reference ?? reference };
+    if (mutated != null) {
+      payload = applyBeforeHookMutation(
+        mutated,
+        payload,
+        prepareCollectPayload,
+      );
+    }
 
     const result = await transport.send<{
       reference: string;
@@ -211,7 +291,7 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
       result.isOk
         ? Ok({ reference: result.value.reference, status: result.value.status })
         : Err(result.error),
-      payload,
+      { ...payload, raw: input },
     );
 
     // Initiation failed (invalid key, signature, limit, provider reject). The
@@ -220,7 +300,7 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
     if (result.isErr) {
       const sdkErr = parseError(result.error);
       return createPaymentInstance(
-        { reference, status: "pending" },
+        { reference: payload.reference, status: "pending" },
         { ...commonDeps, initialError: sdkErr },
       );
     }
@@ -235,24 +315,15 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
   async function collectPaymentAndResolve(
     input: CollectPaymentInput,
   ): Promise<Result<Transaction, string>> {
-    const reference = resolveReference(input.reference);
-    validateCollectionAmount(input.amount);
-    validateNonEmpty(input.customer.name, "customer.name");
-    validateNonEmpty(input.customer.phoneNumber, "customer.phoneNumber");
-    const normalizedPhone = normalizePhone(input.customer.phoneNumber);
-    validateNonEmpty(input.description, "description");
-    if (input.method === "bank" && !input.bank) {
-      throwValidation('bank details are required when method is "bank"');
-    }
-
-    let payload = {
-      ...input,
-      reference,
-      customer: { ...input.customer, phoneNumber: normalizedPhone },
-    };
+    let payload = prepareCollectPayload(input);
     const mutated = await runHook(config.hooks?.beforeCollect, payload);
-    if (mutated != null)
-      payload = { ...mutated, reference: mutated.reference ?? reference };
+    if (mutated != null) {
+      payload = applyBeforeHookMutation(
+        mutated,
+        payload,
+        prepareCollectPayload,
+      );
+    }
 
     const result = await transport.send<Transaction>({
       action: SDK_ACTIONS.collectPaymentAndResolve,
@@ -264,7 +335,7 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
       result.isOk
         ? Ok({ reference: result.value.reference, status: result.value.status })
         : Err(result.error),
-      payload,
+      { ...payload, raw: input },
     );
 
     if (result.isOk) {
@@ -279,29 +350,11 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
    * that emits events as the transaction progresses.
    */
   async function makePayout(input: MakePayoutInput): Promise<PaymentInstance> {
-    const reference = resolveReference(input.reference);
-    validatePayoutAmount(input.amount);
-    validateNonEmpty(input.customer.name, "customer.name");
-    validateNonEmpty(input.customer.phoneNumber, "customer.phoneNumber");
-    const normalizedPhone = normalizePhone(input.customer.phoneNumber);
-    validateNonEmpty(input.description, "description");
-    validateNonEmpty(
-      input.destination.accountHolderName,
-      "destination.accountHolderName",
-    );
-    validateNonEmpty(
-      input.destination.accountNumber,
-      "destination.accountNumber",
-    );
-
-    let payload = {
-      ...input,
-      reference,
-      customer: { ...input.customer, phoneNumber: normalizedPhone },
-    };
+    let payload = preparePayoutPayload(input);
     const mutated = await runHook(config.hooks?.beforePayout, payload);
-    if (mutated != null)
-      payload = { ...mutated, reference: mutated.reference ?? reference };
+    if (mutated != null) {
+      payload = applyBeforeHookMutation(mutated, payload, preparePayoutPayload);
+    }
 
     const result = await transport.send<{
       reference: string;
@@ -316,7 +369,7 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
       result.isOk
         ? Ok({ reference: result.value.reference, status: result.value.status })
         : Err(result.error),
-      payload,
+      { ...payload, raw: input },
     );
 
     // Initiation failed — return a PaymentInstance that emits an "error"
@@ -324,7 +377,7 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
     if (result.isErr) {
       const sdkErr = parseError(result.error);
       return createPaymentInstance(
-        { reference, status: "pending" },
+        { reference: payload.reference, status: "pending" },
         { ...commonDeps, initialError: sdkErr },
       );
     }
@@ -339,29 +392,11 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
   async function makePayoutAndResolve(
     input: MakePayoutInput,
   ): Promise<Result<Transaction, string>> {
-    const reference = resolveReference(input.reference);
-    validatePayoutAmount(input.amount);
-    validateNonEmpty(input.customer.name, "customer.name");
-    validateNonEmpty(input.customer.phoneNumber, "customer.phoneNumber");
-    const normalizedPhone = normalizePhone(input.customer.phoneNumber);
-    validateNonEmpty(input.description, "description");
-    validateNonEmpty(
-      input.destination.accountHolderName,
-      "destination.accountHolderName",
-    );
-    validateNonEmpty(
-      input.destination.accountNumber,
-      "destination.accountNumber",
-    );
-
-    let payload = {
-      ...input,
-      reference,
-      customer: { ...input.customer, phoneNumber: normalizedPhone },
-    };
+    let payload = preparePayoutPayload(input);
     const mutated = await runHook(config.hooks?.beforePayout, payload);
-    if (mutated != null)
-      payload = { ...mutated, reference: mutated.reference ?? reference };
+    if (mutated != null) {
+      payload = applyBeforeHookMutation(mutated, payload, preparePayoutPayload);
+    }
 
     const result = await transport.send<Transaction>({
       action: SDK_ACTIONS.makePayoutAndResolve,
@@ -373,7 +408,7 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
       result.isOk
         ? Ok({ reference: result.value.reference, status: result.value.status })
         : Err(result.error),
-      payload,
+      { ...payload, raw: input },
     );
 
     if (result.isOk) {
@@ -433,6 +468,7 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
   ): Promise<Result<PhoneVerification, string>> {
     validateNonEmpty(input.phoneNumber, "phoneNumber");
     const normalizedPhone = normalizePhone(input.phoneNumber);
+    validatePhoneFormat(normalizedPhone, "phoneNumber");
 
     const result = await transport.send<PhoneVerification>({
       action: SDK_ACTIONS.verifyPhone,

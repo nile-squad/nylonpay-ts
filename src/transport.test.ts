@@ -337,7 +337,12 @@ describe("createTransport", () => {
       expect(mockFetch).toHaveBeenCalledTimes(4); // initial + 3 retries
     });
 
-    it("reuses same request body and headers on retry", async () => {
+    // The body (payload + reference idempotency key) is constant across
+    // attempts, but each attempt is signed fresh: a new nonce, timestamp, and
+    // signature. This keeps a post-backoff retry inside the backend's
+    // timestamp-freshness window and avoids self-rejection as a nonce replay.
+    // Idempotency is carried by the constant reference (D18), not the nonce.
+    it("reuses the body but signs fresh headers on each retry", async () => {
       mockFetch
         .mockRejectedValueOnce(new Error("Network error"))
         .mockResolvedValueOnce({
@@ -358,8 +363,18 @@ describe("createTransport", () => {
       const [, firstCall] = mockFetch.mock.calls[0];
       const [, secondCall] = mockFetch.mock.calls[1];
 
+      // Same request body — identity (reference) is unchanged.
       expect(firstCall.body).toBe(secondCall.body);
-      expect(firstCall.headers).toEqual(secondCall.headers);
+      // Same API key, but a fresh nonce and signature per attempt.
+      expect(firstCall.headers["x-nylon-key"]).toBe(
+        secondCall.headers["x-nylon-key"],
+      );
+      expect(firstCall.headers["x-nylon-nonce"]).not.toBe(
+        secondCall.headers["x-nylon-nonce"],
+      );
+      expect(firstCall.headers["x-nylon-signature"]).not.toBe(
+        secondCall.headers["x-nylon-signature"],
+      );
     });
   });
 });
