@@ -376,8 +376,9 @@ describe("createPaymentInstance", () => {
       expect(deps.fetchStatus).toHaveBeenCalledTimes(0);
       expect(handler).toHaveBeenCalledTimes(1);
       expect(handler.mock.calls[0][0].error).toContain(
-        "exceeded maximum duration",
+        "Timed out waiting for the transaction status",
       );
+      expect(handler.mock.calls[0][0].category).toBe("timeout");
 
       // No further polling
       await vi.advanceTimersByTimeAsync(100);
@@ -406,7 +407,7 @@ describe("createPaymentInstance", () => {
       await vi.advanceTimersByTimeAsync(10);
 
       expect(handler).toHaveBeenCalledTimes(1);
-      expect(handler.mock.calls[0][0].error).toContain("Reference mismatch");
+      expect(handler.mock.calls[0][0].error).toContain("different transaction");
     });
 
     it("tolerates not found errors during early polling", async () => {

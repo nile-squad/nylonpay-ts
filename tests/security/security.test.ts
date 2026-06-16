@@ -236,7 +236,13 @@ describe("SDK security suite", () => {
         payload: {},
       });
       expect(result.isErr).toBe(true);
-      if (result.isErr) expect(result.error).toContain("signature");
+      // Fail-closed: a missing response signature is rejected as an internal
+      // error and the data is never returned. The merchant-facing message stays
+      // jargon-free, so assert the category rather than leaked wording.
+      if (result.isErr) {
+        const err = JSON.parse(result.error) as { category: string };
+        expect(err.category).toBe("internal");
+      }
     });
 
     it("S11: rejects a success response with an INVALID signature", async () => {

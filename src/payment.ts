@@ -130,10 +130,20 @@ export function createPaymentInstance(
     maxPollAttempts: deps.maxPollAttempts ?? 150,
   };
 
-  function resolveWithError(error: string): void {
+  function resolveWithError(
+    error: string,
+    category?: SdkError["category"],
+    retryable?: boolean,
+  ): void {
     state.resolved = true;
     stopUpdates();
-    emitEvent("error", parseError(error).message);
+    const parsed = parseError(error);
+    emitEvent(
+      "error",
+      parsed.message,
+      category ?? parsed.category,
+      retryable ?? parsed.retryable,
+    );
   }
 
   /**
@@ -199,7 +209,8 @@ export function createPaymentInstance(
 
     if (response.reference !== state.reference) {
       resolveWithError(
-        `Reference mismatch: expected ${state.reference} but got ${response.reference}`,
+        "Received a status update for a different transaction",
+        "internal",
       );
       return;
     }
@@ -235,7 +246,7 @@ export function createPaymentInstance(
     if (parsed.category === "not_found") {
       return;
     }
-    emitEvent("error", parsed.message);
+    emitEvent("error", parsed.message, parsed.category, parsed.retryable);
     state.resolved = true;
     stopUpdates();
   }
@@ -271,12 +282,18 @@ export function createPaymentInstance(
     }
 
     if (state.pollAttempts >= state.maxPollAttempts) {
-      resolveWithError("Polling timeout: exceeded maximum attempts");
+      resolveWithError(
+        "Timed out waiting for the transaction status to update",
+        "timeout",
+      );
       return;
     }
 
     if (Date.now() - state.pollStartTime >= state.maxPollDuration) {
-      resolveWithError("Polling timeout: exceeded maximum duration");
+      resolveWithError(
+        "Timed out waiting for the transaction status to update",
+        "timeout",
+      );
       return;
     }
 
