@@ -13,6 +13,7 @@ import {
   DEFAULT_BASE_URL,
   DEFAULT_MAX_RETRIES,
   DEFAULT_TIMEOUT_MS,
+  MAX_RESPONSE_BYTES,
   RETRYABLE_STATUS_CODES,
   SDK_SERVICE,
 } from "./sdk.config";
@@ -253,6 +254,20 @@ export function createTransport({
           body: bodyString,
           signal: controller.signal,
         });
+
+        // Reject oversized responses before parsing — a compromised
+        // server could return a huge body to exhaust memory.
+        const contentLength = response.headers?.get("content-length");
+        if (contentLength && Number(contentLength) > MAX_RESPONSE_BYTES) {
+          cleanup();
+          return Err(
+            JSON.stringify({
+              category: "internal",
+              message: "Received an invalid response from the server",
+              retryable: false,
+            } satisfies SdkError),
+          );
+        }
 
         if (!response.ok) {
           const statusCode = response.status;

@@ -64,40 +64,47 @@ function extractSignedTimestampMs(payloadString: string): number | null {
  *    retries hours later, is re-stamped and re-signed, so this never rejects
  *    legitimate traffic. Pass `toleranceSeconds: 0` to skip this check.
  *
- * @returns True when the signature is valid and (when enforced) the webhook is fresh
+ * @returns True when the signature is valid and (when enforced) the webhook is fresh. Never throws — returns false on any error.
  */
 export function verifyWebhookSignature(input: VerifyWebhookInput): boolean {
-  const payloadString = decodePayload(input.payload);
-  const payloadBytes = Buffer.from(payloadString, "utf8");
+  try {
+    const payloadString = decodePayload(input.payload);
+    const payloadBytes = Buffer.from(payloadString, "utf8");
 
-  const expectedSignature = createHmac("sha256", input.secret)
-    .update(payloadBytes)
-    .digest("hex");
+    const expectedSignature = createHmac("sha256", input.secret)
+      .update(payloadBytes)
+      .digest("hex");
 
-  const providedBuffer = Buffer.from(input.signature, "hex");
-  const expectedBuffer = Buffer.from(expectedSignature, "hex");
+    const providedBuffer = Buffer.from(input.signature, "hex");
+    const expectedBuffer = Buffer.from(expectedSignature, "hex");
 
-  if (providedBuffer.length !== expectedBuffer.length) {
+    if (providedBuffer.length !== expectedBuffer.length) {
+      return false;
+    }
+
+    if (!timingSafeEqual(providedBuffer, expectedBuffer)) {
+      return false;
+    }
+
+    // Signature is authentic — now enforce freshness using the signed timestamp.
+    const toleranceSeconds = input.toleranceSeconds ?? DEFAULT_TOLERANCE_SECONDS;
+    if (toleranceSeconds === 0) {
+      return true;
+    }
+    if (toleranceSeconds < 0) {
+      return false;
+    }
+
+    const timestampMs = extractSignedTimestampMs(payloadString);
+    if (timestampMs === null) {
+      // Fail closed: a valid signature with no verifiable timestamp cannot be
+      // proven fresh, so it cannot be distinguished from a replay.
+      return false;
+    }
+
+    const ageMs = Math.abs(Date.now() - timestampMs);
+    return ageMs <= toleranceSeconds * 1000;
+  } catch {
     return false;
   }
-
-  if (!timingSafeEqual(providedBuffer, expectedBuffer)) {
-    return false;
-  }
-
-  // Signature is authentic — now enforce freshness using the signed timestamp.
-  const toleranceSeconds = input.toleranceSeconds ?? DEFAULT_TOLERANCE_SECONDS;
-  if (toleranceSeconds <= 0) {
-    return true;
-  }
-
-  const timestampMs = extractSignedTimestampMs(payloadString);
-  if (timestampMs === null) {
-    // Fail closed: a valid signature with no verifiable timestamp cannot be
-    // proven fresh, so it cannot be distinguished from a replay.
-    return false;
-  }
-
-  const ageMs = Math.abs(Date.now() - timestampMs);
-  return ageMs <= toleranceSeconds * 1000;
 }

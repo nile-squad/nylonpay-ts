@@ -41,7 +41,7 @@ Use your test keys to work in sandbox, or your production keys to go live. There
 |---|---|---|---|
 | `apiKey` | Yes | | Must start with `npk_` |
 | `apiSecret` | Yes | | Must start with `nps_` |
-| `baseUrl` | No | Default is used | Override only if self-hosting |
+| `baseUrl` | No | Default is used | Override for a custom endpoint |
 | `timeoutMs` | No | `30000` | Request timeout in milliseconds |
 | `maxRetries` | No | `3` | Retry count for failed requests |
 | `maxPollIntervalMs` | No | `2000` | Polling interval for async payments |
@@ -231,16 +231,13 @@ if (!result.isOk) {
 
 `USD`, `EUR`, `GBP`, `KES`, `UGX`, `TZS`, `RWF`
 
-## Development
+## Links
 
-Maintainer notes and pending work live in [`dev-note.md`](./dev-note.md).
-
-```sh
-pnpm install
-pnpm test        # vitest
-pnpm typecheck   # tsc --noEmit
-pnpm build       # tsup
-```
+- [Documentation](https://docs.nylonpay.nilesquad.com/docs)
+- [SDK Spec](https://github.com/nile-squad/specs/blob/main/nylonpay-sdk-spec/spec.md)
+- [GitHub Repository](https://github.com/nile-squad/nylonpay-ts)
+- [Python SDK](https://github.com/nile-squad/nylonpay-py)
+- [Nylon Pay](https://nylonpay.nilesquad.com)
 
 ## License
 

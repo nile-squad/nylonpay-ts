@@ -40,3 +40,6 @@ export const SDK_ACTIONS = {
 
 /** HTTP status codes that trigger retries */
 export const RETRYABLE_STATUS_CODES = new Set([408, 429, 500, 502, 503, 504]);
+
+/** Maximum response body size (10 MB) — responses exceeding this are rejected before parsing. */
+export const MAX_RESPONSE_BYTES = 10 * 1024 * 1024;
