@@ -87,7 +87,8 @@ export function verifyWebhookSignature(input: VerifyWebhookInput): boolean {
     }
 
     // Signature is authentic — now enforce freshness using the signed timestamp.
-    const toleranceSeconds = input.toleranceSeconds ?? DEFAULT_TOLERANCE_SECONDS;
+    const toleranceSeconds =
+      input.toleranceSeconds ?? DEFAULT_TOLERANCE_SECONDS;
     if (toleranceSeconds === 0) {
       return true;
     }
