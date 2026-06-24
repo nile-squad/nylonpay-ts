@@ -15,6 +15,8 @@ import type {
   GetStatusInput,
   GetTransactionInput,
   InvoiceResponse,
+  ListTransactionsInput,
+  ListTransactionsResponse,
   MakePayoutInput,
   NylonPaySdk,
   PaymentInstance,
@@ -502,6 +504,35 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
   }
 
   /**
+   * List transactions with optional tag/status/type/date filters.
+   * Returns lightweight summaries; use getTransaction for full detail.
+   */
+  async function listTransactions(
+    input?: ListTransactionsInput,
+  ): Promise<Result<ListTransactionsResponse, string>> {
+    const result = await transport.send<ListTransactionsResponse>({
+      action: SDK_ACTIONS.listTransactions,
+      payload: input ?? {},
+    });
+
+    if (result.isOk) {
+      return Ok(result.value);
+    }
+    return Err(result.error);
+  }
+
+  /**
+   * Convenience: list transactions for a single tag.
+   * Delegates to listTransactions with tags: [tag].
+   */
+  async function getTransactionsByTag(
+    tag: string,
+    options?: Omit<ListTransactionsInput, "tags">,
+  ): Promise<Result<ListTransactionsResponse, string>> {
+    return listTransactions({ ...options, tags: [tag] });
+  }
+
+  /**
    * Verify a webhook payload signature.
    * Delegates to the standalone verifyWebhookSignature utility.
    */
@@ -516,6 +547,8 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
     makePayoutAndResolve,
     getStatus,
     getTransaction,
+    listTransactions,
+    getTransactionsByTag,
     verifyPhone,
     createInvoice,
     verifyWebhookSignature: verifyWebhook,

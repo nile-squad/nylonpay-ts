@@ -34,6 +34,7 @@ export const SDK_ACTIONS = {
   makePayoutAndResolve: "sdk-make-payout-and-resolve",
   getStatus: "sdk-get-status",
   getTransaction: "sdk-get-transaction",
+  listTransactions: "sdk-list-transactions",
   verifyPhone: "sdk-verify-phone",
   createInvoice: "sdk-create-invoice",
 } as const;

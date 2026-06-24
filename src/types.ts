@@ -125,6 +125,13 @@ export type CollectPaymentInput = {
   method?: PaymentMethod;
   bank?: BankDetails;
   metadata?: Record<string, string>;
+  /**
+   * Business labels to attach to the transaction. Normalized to lowercase;
+   * reserved tags (`"live"`, `"test"`) are managed automatically. Max 10 tags,
+   * each up to 50 characters. Useful for grouping payments by campaign, product,
+   * team, or any merchant-defined dimension.
+   */
+  tags?: string[];
 };
 
 /**
@@ -139,6 +146,8 @@ export type MakePayoutInput = {
   description: string;
   reference?: string;
   metadata?: Record<string, string>;
+  /** Business labels — same normalization rules as {@link CollectPaymentInput.tags}. */
+  tags?: string[];
 };
 
 /**
@@ -176,6 +185,8 @@ export type CreateInvoiceInput = {
   redirectUrl?: string;
   reference?: string;
   metadata?: Record<string, string>;
+  /** Business labels — same normalization rules as {@link CollectPaymentInput.tags}. */
+  tags?: string[];
 };
 
 /**
@@ -512,6 +523,62 @@ export type EventData = {
 export type PaymentEventHandler = (data: EventData) => void;
 
 /**
+ * Lightweight transaction summary returned by `listTransactions`. Carries the
+ * fields needed for listing and aggregation without the full provider detail
+ * that `getTransaction` exposes. `tags` is included so merchants can see which
+ * labels a row carries while paginating.
+ */
+export type TransactionSummary = {
+  id: string;
+  reference: string;
+  amount: number;
+  currency: Currency;
+  status: TransactionStatus;
+  type: TransactionType;
+  method: string | null;
+  mode: TransactionMode;
+  /** Smart tags on the transaction (system + developer). */
+  tags: string[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+/**
+ * Input for listing and filtering transactions. All fields are optional —
+ * omitting filters returns the most recent transactions for the calling
+ * key's account and mode.
+ */
+export type ListTransactionsInput = {
+  /** Filter to transactions carrying ALL of these tags (AND semantics). */
+  tags?: string[];
+  status?: TransactionStatus;
+  type?: TransactionType;
+  /** Maximum number of results (1–100, default 20). */
+  limit?: number;
+  /** Zero-based offset for pagination (default 0). */
+  offset?: number;
+  /** ISO 8601 datetime — only transactions created at or after this time. */
+  createdAfter?: string;
+  /** ISO 8601 datetime — only transactions created at or before this time. */
+  createdBefore?: string;
+};
+
+/**
+ * Response from `listTransactions`. Includes the page of summaries, the count
+ * returned, and the effective pagination/filter parameters so callers can build
+ * pagination UIs without round-tripping for metadata.
+ */
+export type ListTransactionsResponse = {
+  transactions: TransactionSummary[];
+  /** Number of transactions in this page (≤ limit). */
+  count: number;
+  limit: number;
+  offset: number;
+  /** The normalized tags that were applied as filters (empty if no tag filter). */
+  tags: string[];
+};
+
+/**
  * SDK instance returned by the factory. Provides all payment operations
  * and the webhook verification utility.
  *
@@ -683,6 +750,45 @@ export interface NylonPaySdk {
   createInvoice(
     input: CreateInvoiceInput,
   ): Promise<Result<InvoiceResponse, string>>;
+
+  /**
+   * List transactions for the calling key's account, with optional filtering.
+   * Returns lightweight summaries — use `getTransaction` for full detail.
+   *
+   * Tag filters use AND semantics: `tags: ["vip", "promo"]` returns only
+   * transactions tagged with BOTH labels. Tags are normalized (lowercase) before
+   * matching, so `"VIP"` and `"vip"` match the same rows.
+   *
+   * @example
+   * ```ts
+   * // All transactions tagged "vip" from the last week
+   * const result = await nylonpay.listTransactions({
+   *   tags: ["vip"],
+   *   createdAfter: new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString(),
+   * });
+   * if (result.isOk) console.log(result.value.transactions);
+   * ```
+   */
+  listTransactions(
+    input?: ListTransactionsInput,
+  ): Promise<Result<ListTransactionsResponse, string>>;
+
+  /**
+   * Convenience wrapper around `listTransactions` that filters by a single tag.
+   * Equivalent to `listTransactions({ tags: [tag], ...options })`.
+   *
+   * @example
+   * ```ts
+   * const result = await nylonpay.getTransactionsByTag("campaign-q2");
+   * if (result.isOk) {
+   *   const total = result.value.transactions.reduce((s, t) => s + t.amount, 0);
+   * }
+   * ```
+   */
+  getTransactionsByTag(
+    tag: string,
+    options?: Omit<ListTransactionsInput, "tags">,
+  ): Promise<Result<ListTransactionsResponse, string>>;
 
   /**
    * Verify that an incoming webhook payload was signed by Nylon Pay.
