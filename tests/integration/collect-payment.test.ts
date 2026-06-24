@@ -42,8 +42,7 @@ describe("collectPayment", () => {
   });
 
   it("I3: reuses the same transaction for a repeated reference (idempotency)", async () => {
-    const ref = `id${String(Date.now()).slice(-11)}`;
-    // Use a different amount to avoid the dup cache on the first call.
+    const ref = crypto.randomUUID();
     const amount = RUN_AMOUNT + 1;
 
     const first = await sdk.collectPayment({
@@ -65,7 +64,6 @@ describe("collectPayment", () => {
     expect(first.reference).toBe(ref);
     expect(second.reference).toBe(ref);
 
-    // Both calls should point to the same backend transaction.
     const tx = await sdk.getTransaction({ reference: ref });
     if (tx.isErr)
       throw new Error(`idempotency: first call failed silently: ${tx.error}`);
@@ -87,7 +85,6 @@ describe("collectPayment", () => {
     expect(tx.reference).toBeTruthy();
     expect(tx.type).toBe("collection");
     expect(tx.metadata).toBeTypeOf("object");
-    // failureReason is populated only when the transaction failed.
     if (tx.status === "failed") {
       expect(typeof tx.failureReason).toBe("string");
     } else {
@@ -96,7 +93,7 @@ describe("collectPayment", () => {
   }, 30_000);
 
   it("I18: metadata round-trips through getTransaction", async () => {
-    const ref = `mt${String(Date.now()).slice(-11)}`;
+    const ref = crypto.randomUUID();
     await sdk.collectPayment({
       amount: RUN_AMOUNT + 4,
       currency: "UGX",
