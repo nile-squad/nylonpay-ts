@@ -3,7 +3,7 @@
  * Created via createNylonPay factory and returned as NylonPaySdk.
  */
 
-import { randomBytes } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { Err, Ok, type Result, safeTry } from "slang-ts";
 import { createPaymentInstance } from "./payment";
 import { isValidPhoneFormat, normalizePhone } from "./phone";
@@ -44,38 +44,21 @@ type ResolvedConfig = {
   hooks?: SdkHooks;
 };
 
-/** Generate a random 15-character hex reference for idempotency. */
-function generateReference(): string {
-  return randomBytes(16).toString("hex").slice(0, 15);
-}
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
- * PivotPay caps the `merchantTransactionId` (our reference) at 13–15 characters.
- * The backend echoes the reference verbatim as that id, so an out-of-range
- * reference is rejected server-side (and historically surfaced as an opaque
- * provider error). Auto-generated references are always 15 chars; this only
- * bites when a merchant supplies their own (e.g. a 36-char UUID order id).
- */
-const REFERENCE_MIN_LENGTH = 13;
-const REFERENCE_MAX_LENGTH = 15;
-
-/**
- * Resolve the idempotency reference for a create call: auto-generate when the
- * merchant omits it, otherwise validate their value against the 13–15 char
- * limit *synchronously* (like validateAmount) so a bad reference throws locally
- * instead of costing a backend round-trip.
+ * Resolve the idempotency reference for a create call: auto-generate a UUID v4
+ * when the merchant omits it, otherwise validate their value is a valid UUID
+ * (any version) *synchronously* (like validateAmount) so a bad reference throws
+ * locally instead of costing a backend round-trip.
  */
 function resolveReference(reference?: string): string {
   if (reference === undefined) {
-    return generateReference();
+    return randomUUID();
   }
-  if (
-    reference.length < REFERENCE_MIN_LENGTH ||
-    reference.length > REFERENCE_MAX_LENGTH
-  ) {
-    throwValidation(
-      `reference must be ${REFERENCE_MIN_LENGTH}–${REFERENCE_MAX_LENGTH} characters`,
-    );
+  if (!UUID_REGEX.test(reference)) {
+    throwValidation("reference must be a valid UUID");
   }
   return reference;
 }

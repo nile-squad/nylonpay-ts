@@ -545,25 +545,29 @@ describe("createNylonPay", () => {
       ).rejects.toThrow("description is required");
     });
 
-    it("throws when a supplied reference is too long (e.g. a UUID)", async () => {
+    it("accepts a valid UUID v4 reference", async () => {
+      mockSend.mockResolvedValue(
+        Ok({ reference: "550e8400-e29b-41d4-a716-446655440000", status: "pending" }),
+      );
+
       const sdk = createNylonPay({
         apiKey: "npk_test",
         apiSecret: "nps_test",
         force: true,
       });
 
-      await expect(
-        sdk.collectPayment({
-          amount: 1000,
-          currency: "UGX",
-          customer: { name: "Test", phoneNumber: "+256700000000" },
-          description: "Test",
-          reference: "17708a2a-58ed-42d2-88b4-b29e6c7aa216",
-        }),
-      ).rejects.toThrow("reference must be 13–15 characters");
+      const instance = await sdk.collectPayment({
+        amount: 1000,
+        currency: "UGX",
+        customer: { name: "Test", phoneNumber: "+256700000000" },
+        description: "Test",
+        reference: "550e8400-e29b-41d4-a716-446655440000",
+      });
+
+      expect(instance.reference).toBe("550e8400-e29b-41d4-a716-446655440000");
     });
 
-    it("throws when a supplied reference is too short", async () => {
+    it("throws when a supplied reference is not a valid UUID", async () => {
       const sdk = createNylonPay({
         apiKey: "npk_test",
         apiSecret: "nps_test",
@@ -578,7 +582,7 @@ describe("createNylonPay", () => {
           description: "Test",
           reference: "short",
         }),
-      ).rejects.toThrow("reference must be 13–15 characters");
+      ).rejects.toThrow("reference must be a valid UUID");
     });
 
     it("throws when method is bank without bank details", async () => {
@@ -1140,7 +1144,7 @@ describe("createNylonPay", () => {
     // VULN-003: a before* hook runs after validation but must NOT be able to
     // smuggle invalid values past it (spec invariant #12). The mutated payload
     // is re-validated; a bad reference/amount throws and nothing is sent.
-    it("re-validates a beforeCollect hook that sets an out-of-range reference", async () => {
+    it("re-validates a beforeCollect hook that sets an invalid reference", async () => {
       mockSend.mockResolvedValue(
         Ok({ reference: "test-ref", status: "pending" }),
       );
@@ -1158,7 +1162,7 @@ describe("createNylonPay", () => {
       });
 
       await expect(sdk.collectPayment(baseCollectInput)).rejects.toThrow(
-        "reference must be 13–15 characters",
+        "reference must be a valid UUID",
       );
       expect(mockSend).not.toHaveBeenCalled();
     });
@@ -1186,7 +1190,7 @@ describe("createNylonPay", () => {
       expect(mockSend).not.toHaveBeenCalled();
     });
 
-    it("re-validates a beforePayout hook that sets an out-of-range reference", async () => {
+    it("re-validates a beforePayout hook that sets an invalid reference", async () => {
       mockSend.mockResolvedValue(
         Ok({ reference: "payout-ref", status: "pending" }),
       );
@@ -1204,7 +1208,7 @@ describe("createNylonPay", () => {
       });
 
       await expect(sdk.makePayout(basePayoutInput)).rejects.toThrow(
-        "reference must be 13–15 characters",
+        "reference must be a valid UUID",
       );
       expect(mockSend).not.toHaveBeenCalled();
     });
@@ -1261,7 +1265,7 @@ describe("createNylonPay", () => {
       const [, input] = afterCollect.mock.calls[0];
       // `input` is the sent payload: phone normalized, reference auto-generated.
       expect(input.customer.phoneNumber).toBe("256768499027");
-      expect(input.reference).toHaveLength(15);
+      expect(input.reference).toHaveLength(36);
       // `input.raw` is exactly what the merchant passed.
       expect(input.raw.customer.phoneNumber).toBe("0768499027");
       expect(input.raw.reference).toBeUndefined();
