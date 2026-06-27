@@ -547,7 +547,10 @@ describe("createNylonPay", () => {
 
     it("accepts a valid UUID v4 reference", async () => {
       mockSend.mockResolvedValue(
-        Ok({ reference: "550e8400-e29b-41d4-a716-446655440000", status: "pending" }),
+        Ok({
+          reference: "550e8400-e29b-41d4-a716-446655440000",
+          status: "pending",
+        }),
       );
 
       const sdk = createNylonPay({
