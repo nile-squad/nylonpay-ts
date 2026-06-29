@@ -663,6 +663,55 @@ describe("createNylonPay", () => {
       ).rejects.toThrow("item quantity must be a positive integer");
     });
 
+    it("throws when createInvoice has zero item amount", async () => {
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+      });
+
+      await expect(
+        sdk.createInvoice({
+          amount: 1000,
+          currency: "UGX",
+          customerEmail: "customer@example.com",
+          items: [{ name: "Item", quantity: 1, amount: 0 }],
+        }),
+      ).rejects.toThrow("item amount must be a positive integer");
+    });
+
+    it("throws when createInvoice has empty customerEmail", async () => {
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+      });
+
+      await expect(
+        sdk.createInvoice({
+          amount: 1000,
+          currency: "UGX",
+          customerEmail: "",
+        }),
+      ).rejects.toThrow("customerEmail");
+    });
+
+    it("throws when createInvoice amount is below minimum", async () => {
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+      });
+
+      await expect(
+        sdk.createInvoice({
+          amount: 499,
+          currency: "UGX",
+          customerEmail: "customer@example.com",
+        }),
+      ).rejects.toThrow("at least 500");
+    });
+
     it("collectPayment rejects amount < 500", async () => {
       const sdk = createNylonPay({
         apiKey: "npk_test",

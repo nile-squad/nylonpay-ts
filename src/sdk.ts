@@ -473,7 +473,6 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
   async function createInvoice(
     input: CreateInvoiceInput,
   ): Promise<Result<InvoiceResponse, string>> {
-    const reference = resolveReference(input.reference);
     validateCollectionAmount(input.amount);
     validateNonEmpty(input.customerEmail, "customerEmail");
 
@@ -491,10 +490,9 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
       }
     }
 
-    const payload = { ...input, reference };
     const result = await transport.send<InvoiceResponse>({
       action: SDK_ACTIONS.createInvoice,
-      payload,
+      payload: input,
     });
 
     if (result.isOk) {
