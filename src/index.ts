@@ -76,6 +76,7 @@ export type {
   VerifyWebhookInput,
   WebhookEventType,
   WebhookPayload,
+  WebhookTransactionSnapshot,
 } from "./types";
 // Standalone webhook verification utility
 export { verifyWebhookSignature } from "./verify-webhook";

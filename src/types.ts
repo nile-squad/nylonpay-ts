@@ -58,13 +58,10 @@ export type PaymentEvent =
  * notifications, and reconcile ledgers without polling.
  */
 export type WebhookEventType =
-  | "collection.completed"
-  | "collection.failed"
-  | "payout.completed"
-  | "payout.failed"
-  | "payout.reversed"
-  | "refund.completed"
-  | "chargeback.received";
+  | "transaction.successful"
+  | "transaction.failed"
+  | "transaction.processing"
+  | "transaction.cancelled";
 
 /**
  * Currencies supported by the platform. Merchants should use the currency
@@ -271,8 +268,9 @@ export type PhoneVerification = {
 };
 
 /**
- * Response from creating an invoice. The `url` is customer-facing;
- * the `token` can be used to idempotently re-fetch the invoice state.
+ * Response from creating an invoice. `paymentLink` is the URL emailed
+ * to the customer; `invoiceNumber` is the human-readable invoice
+ * identifier.
  */
 export type InvoiceResponse = {
   id: string;
@@ -286,14 +284,37 @@ export type InvoiceResponse = {
 };
 
 /**
+ * Merchant-facing transaction record delivered inside a webhook payload.
+ * Field names match the wire JSON exactly (camelCase) — merchants type
+ * the `JSON.parse(req.body)` output against this directly. It is NOT
+ * passed through the SDK's snake_case ↔ camelCase wire conversion.
+ */
+export type WebhookTransactionSnapshot = {
+  transactionId: string;
+  reference: string;
+  /** Decimal-string amount (matches backend wire JSON). */
+  amount: string;
+  currency: string;
+  status: TransactionStatus;
+  previousStatus: TransactionStatus;
+  type: TransactionType;
+  method: PaymentMethod;
+  mode: TransactionMode;
+  failureReason: string | null;
+  operatorTid: string | null;
+};
+
+/**
  * Structured payload delivered to the merchant's webhook endpoint.
- * Merchants should verify the signature before trusting the data.
+ * Merchants should verify the `x-nylon-signature` header before trusting
+ * the data — the signature does NOT live in the body.
  */
 export type WebhookPayload = {
+  /** Backend delivery id (`buildDeliveryBody` field name; snake_case on the wire). */
+  delivery_id: string;
   event: WebhookEventType;
-  data: Transaction;
+  payload: WebhookTransactionSnapshot;
   timestamp: string;
-  signature: string;
 };
 
 /**
@@ -734,24 +755,24 @@ export interface NylonPaySdk {
   ): Promise<Result<PhoneVerification, string>>;
 
   /**
-   * Generate a hosted payment link. The returned URL renders a payment page
-   * where the customer completes the transaction — including card payments
-   * (the only way to accept cards, keeping you out of PCI scope).
+   * Create an invoice and email it to the customer. The customer receives
+   * a PDF invoice plus a payment link they open to pay via mobile money.
+   * Supports optional line items (max 50) for itemized breakdowns.
+   * A receipt email is sent automatically after successful payment.
    *
-   * Supports optional line items (max 50) for itemized breakdowns on the
-   * payment page. Auto-generates `reference` if omitted.
+   * Auto-generates `reference` if omitted.
    *
    * @example
    * ```ts
    * const result = await nylonpay.createInvoice({
    *   amount: 25000,
    *   currency: "UGX",
+   *   customerEmail: "jane@example.com",
    *   description: "Monthly subscription",
-   *   items: [{ name: "Pro Plan", quantity: 1, unitPrice: 25000 }],
-   *   redirectUrl: "https://myapp.com/thank-you",
+   *   items: [{ name: "Pro Plan", quantity: 1, amount: 25000 }],
    * });
    *
-   * if (result.isOk) sendEmail(result.value.url);
+   * if (result.isOk) sendEmail(result.value.paymentLink);
    * ```
    */
   createInvoice(
