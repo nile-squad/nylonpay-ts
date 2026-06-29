@@ -9,53 +9,54 @@ describe("createInvoice", () => {
     sdk = createTestSdk();
   });
 
-  // Payment links are disabled in sandbox mode — these tests only run against live keys.
-  it.skip("returns a payment URL and token", async () => {
+  it("returns invoiceNumber and paymentLink", async () => {
     const result = await sdk.createInvoice({
       amount: 5000,
       currency: "UGX",
+      customerEmail: "test@example.com",
       description: "Integration test invoice",
     });
 
     if (result.isErr) throw new Error(result.error);
-    expect(result.value.url).toMatch(/^https?:\/\//);
-    expect(result.value.token).toBeTruthy();
+    expect(result.value.invoiceNumber).toMatch(/^INV-/);
+    expect(result.value.paymentLink).toMatch(/^https?:\/\//);
+    expect(result.value.status).toBe("issued");
+    expect(result.value.currency).toBe("UGX");
   });
 
-  it.skip("returns a payment URL when items are included", async () => {
+  it("returns a paymentLink when items are included", async () => {
     const result = await sdk.createInvoice({
       amount: 10000,
       currency: "UGX",
-      description: "Invoice with items",
+      customerEmail: "test@example.com",
+      customerName: "Test Customer",
+      description: "Invoice with line items",
       items: [
-        { name: "Item A", quantity: 2, unitPrice: 3000 },
-        { name: "Item B", quantity: 1, unitPrice: 4000 },
+        { name: "Item A", quantity: 2, amount: 3000 },
+        { name: "Item B", quantity: 1, amount: 4000 },
       ],
     });
 
     if (result.isErr) throw new Error(result.error);
-    expect(result.value.url).toMatch(/^https?:\/\//);
+    expect(result.value.paymentLink).toMatch(/^https?:\/\//);
+    expect(result.value.invoiceNumber).toMatch(/^INV-/);
   });
 
-  it.skip("reuses the same reference when provided (idempotency)", async () => {
-    const ref = `iv${String(Date.now()).slice(-11)}`;
-
-    const first = await sdk.createInvoice({
-      amount: 2000,
+  it("includes optional fields without error", async () => {
+    const result = await sdk.createInvoice({
+      amount: 7500,
       currency: "UGX",
-      description: "Idempotency test",
-      reference: ref,
+      customerEmail: "test@example.com",
+      customerName: "John Doe",
+      customerPhone: "0768499027",
+      description: "Invoice with all optional fields",
+      dueDate: "2026-12-31",
+      merchantReference: "MY-REF-001",
+      metadata: { orderId: "order-123" },
     });
 
-    const second = await sdk.createInvoice({
-      amount: 2000,
-      currency: "UGX",
-      description: "Idempotency test",
-      reference: ref,
-    });
-
-    if (first.isErr) throw new Error(first.error);
-    if (second.isErr) throw new Error(second.error);
-    expect(first.value.url).toBe(second.value.url);
+    if (result.isErr) throw new Error(result.error);
+    expect(result.value.id).toBeTruthy();
+    expect(result.value.invoiceNumber).toMatch(/^INV-/);
   });
 });
