@@ -475,7 +475,7 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
   ): Promise<Result<InvoiceResponse, string>> {
     const reference = resolveReference(input.reference);
     validateCollectionAmount(input.amount);
-    validateNonEmpty(input.description, "description");
+    validateNonEmpty(input.customerEmail, "customerEmail");
 
     if (input.items) {
       if (input.items.length > 50) {
@@ -485,8 +485,8 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
         if (!Number.isInteger(item.quantity) || item.quantity <= 0) {
           throwValidation("item quantity must be a positive integer");
         }
-        if (!Number.isInteger(item.unitPrice) || item.unitPrice <= 0) {
-          throwValidation("item unitPrice must be a positive integer");
+        if (!Number.isInteger(item.amount) || item.amount <= 0) {
+          throwValidation("item amount must be a positive integer");
         }
       }
     }

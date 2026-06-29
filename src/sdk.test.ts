@@ -303,10 +303,11 @@ describe("createNylonPay", () => {
       mockSend.mockResolvedValue(
         Ok({
           id: "inv-123",
-          url: "https://pay.nylonpay.io/inv-123",
-          token: "token-123",
-          expiresAt: "2024-01-02T00:00:00Z",
-          status: "pending",
+          invoiceNumber: "INV-ABCDEFGHIJKL",
+          paymentLink: "https://nylonpay.nilesquad.com/invoices/INV-ABCDEFGHIJKL",
+          amount: "1000",
+          currency: "UGX",
+          status: "issued",
         }),
       );
 
@@ -319,12 +320,14 @@ describe("createNylonPay", () => {
       const result = await sdk.createInvoice({
         amount: 1000,
         currency: "UGX",
+        customerEmail: "customer@example.com",
         description: "Test invoice",
       });
 
       expect(result.isOk).toBe(true);
       if (result.isOk) {
-        expect(result.value.url).toBe("https://pay.nylonpay.io/inv-123");
+        expect(result.value.paymentLink).toContain("/invoices/");
+        expect(result.value.invoiceNumber).toBe("INV-ABCDEFGHIJKL");
       }
     });
 
@@ -628,13 +631,14 @@ describe("createNylonPay", () => {
       const items = Array.from({ length: 51 }, (_, i) => ({
         name: `Item ${i}`,
         quantity: 1,
-        unitPrice: 100,
+        amount: 100,
       }));
 
       await expect(
         sdk.createInvoice({
           amount: 1000,
           currency: "UGX",
+          customerEmail: "customer@example.com",
           description: "Test",
           items,
         }),
@@ -652,8 +656,9 @@ describe("createNylonPay", () => {
         sdk.createInvoice({
           amount: 1000,
           currency: "UGX",
+          customerEmail: "customer@example.com",
           description: "Test",
-          items: [{ name: "Item", quantity: -1, unitPrice: 100 }],
+          items: [{ name: "Item", quantity: -1, amount: 100 }],
         }),
       ).rejects.toThrow("item quantity must be a positive integer");
     });

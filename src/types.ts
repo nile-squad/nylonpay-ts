@@ -101,7 +101,8 @@ export type Destination = {
 export type InvoiceItem = {
   name: string;
   quantity: number;
-  unitPrice: number;
+  /** Amount per unit in smallest currency unit (e.g. UGX shillings). */
+  amount: number;
 };
 
 /**
@@ -173,17 +174,20 @@ export type VerifyPhoneInput = {
 };
 
 /**
- * Input for creating a hosted invoice. The returned URL can be shared
- * with customers; card payments are only supported via this hosted
- * flow to keep the merchant out of PCI scope.
+ * Input for creating a hosted invoice. The returned payment link can be
+ * sent to the customer via email; they open it to complete payment.
  */
 export type CreateInvoiceInput = {
   amount: number;
   currency: Currency;
-  description: string;
+  /** Email address to send the invoice to. Required — invoices are email-first. */
+  customerEmail: string;
+  customerName?: string;
+  customerPhone?: string;
+  description?: string;
+  dueDate?: string;
   items?: InvoiceItem[];
-  redirectUrl?: string;
-  reference?: string;
+  merchantReference?: string;
   metadata?: Record<string, string>;
   /** Business labels — same normalization rules as {@link CollectPaymentInput.tags}. */
   tags?: string[];
@@ -272,10 +276,13 @@ export type PhoneVerification = {
  */
 export type InvoiceResponse = {
   id: string;
-  url: string;
-  token: string;
-  expiresAt: string;
-  status: "pending";
+  invoiceNumber: string;
+  /** Direct payment URL — share this with the customer. */
+  paymentLink: string;
+  amount: string;
+  currency: string;
+  /** `"issued"` when created. Transitions to `"paid"` once the customer pays. */
+  status: string;
 };
 
 /**
