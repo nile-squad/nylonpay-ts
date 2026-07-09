@@ -2,8 +2,8 @@
 export const DEFAULT_BASE_URL =
   "https://api.nylonpay.nilesquad.com/api/services";
 
-/** Default request timeout (30 seconds) */
-export const DEFAULT_TIMEOUT_MS = 30_000;
+/** Default request timeout (90 seconds — covers server inline resolve windows). */
+export const DEFAULT_TIMEOUT_MS = 90_000;
 
 /** Default max retry attempts for transport failures */
 export const DEFAULT_MAX_RETRIES = 3;
