@@ -4,11 +4,11 @@
  */
 
 import { Err, Ok, type Result } from "slang-ts";
-import { POLL_JITTER_MS } from "./sdk.config";
 import {
   isTerminalTransactionStatus,
   resolvePollIntervalMs,
 } from "./poll-interval";
+import { POLL_JITTER_MS } from "./sdk.config";
 import { parseError } from "./transport";
 import type {
   GetStatusInput,

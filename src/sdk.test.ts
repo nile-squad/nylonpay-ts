@@ -353,7 +353,8 @@ describe("createNylonPay", () => {
         Ok({
           id: "inv-123",
           invoiceNumber: "INV-ABCDEFGHIJKL",
-          paymentLink: "https://nylonpay.nilesquad.com/invoices/INV-ABCDEFGHIJKL",
+          paymentLink:
+            "https://nylonpay.nilesquad.com/invoices/INV-ABCDEFGHIJKL",
           amount: "1000",
           currency: "UGX",
           status: "issued",

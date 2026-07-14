@@ -1,5 +1,10 @@
 /** Terminal transaction statuses that stop client-side resolve polling. */
-const TERMINAL_STATUSES = new Set(["successful", "failed", "cancelled", "completed"]);
+const TERMINAL_STATUSES = new Set([
+  "successful",
+  "failed",
+  "cancelled",
+  "completed",
+]);
 
 /** Whether a status is terminal for resolve/wait continuation. */
 export function isTerminalTransactionStatus(status: string): boolean {
@@ -21,7 +26,6 @@ export function resolvePollIntervalMs(input: {
   if (elapsed < twoMinutes) {
     return input.baseIntervalMs;
   }
-  const periods =
-    Math.floor((elapsed - twoMinutes) / twoMinutes) + 1;
+  const periods = Math.floor((elapsed - twoMinutes) / twoMinutes) + 1;
   return Math.min(input.baseIntervalMs * 2 ** periods, 15_000);
 }

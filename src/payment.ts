@@ -7,8 +7,8 @@
  */
 
 import type { Result } from "slang-ts";
-import { createEmitter, type Emitter } from "./pubsub";
 import { resolvePollIntervalMs } from "./poll-interval";
+import { createEmitter, type Emitter } from "./pubsub";
 import { POLL_JITTER_MS } from "./sdk.config";
 import { parseError } from "./transport";
 import type {
@@ -106,10 +106,10 @@ export function createPaymentInstance(
     fetchTransaction: (
       input: GetTransactionInput,
     ) => Promise<Result<Transaction, string>>;
-  pollIntervalMs?: number;
-  maxPollDuration?: number;
-  maxPollAttempts?: number;
-  onDelayed?: OnDelayedBehavior;
+    pollIntervalMs?: number;
+    maxPollDuration?: number;
+    maxPollAttempts?: number;
+    onDelayed?: OnDelayedBehavior;
     /**
      * When set, the operation never started (the backend rejected initiation).
      * The instance emits this as an `"error"` event on the next tick instead of
@@ -296,7 +296,8 @@ export function createPaymentInstance(
       resolvePollIntervalMs({
         baseIntervalMs: state.pollIntervalMs,
         pollStartTimeMs: state.pollStartTime,
-      }) + Math.random() * POLL_JITTER_MS;
+      }) +
+      Math.random() * POLL_JITTER_MS;
     state.pollingTimer = setTimeout(() => {
       state.pollingTimer = null;
       void pollStatus();

@@ -6,9 +6,9 @@
 import { randomUUID } from "node:crypto";
 import { Err, Ok, type Result, safeTry } from "slang-ts";
 import { createPaymentInstance } from "./payment";
-import { pollUntilTerminal } from "./poll-until-terminal";
-import { isTerminalTransactionStatus } from "./poll-interval";
 import { isValidPhoneFormat, normalizePhone } from "./phone";
+import { isTerminalTransactionStatus } from "./poll-interval";
+import { pollUntilTerminal } from "./poll-until-terminal";
 import { SDK_ACTIONS } from "./sdk.config";
 import { createSdkError, createTransport, parseError } from "./transport";
 import type {

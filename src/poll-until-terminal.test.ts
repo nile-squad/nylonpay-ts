@@ -1,4 +1,4 @@
-import { Err, Ok } from "slang-ts";
+import { Ok } from "slang-ts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { pollUntilTerminal } from "./poll-until-terminal";
 import type { Transaction } from "./types";

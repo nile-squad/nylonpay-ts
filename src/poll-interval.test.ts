@@ -8,7 +8,7 @@ describe("resolvePollIntervalMs", () => {
         baseIntervalMs: 2000,
         pollStartTimeMs: 0,
         nowMs: 60_000,
-      })
+      }),
     ).toBe(2000);
   });
 
@@ -18,7 +18,7 @@ describe("resolvePollIntervalMs", () => {
         baseIntervalMs: 2000,
         pollStartTimeMs: 0,
         nowMs: 10 * 60 * 1000,
-      })
+      }),
     ).toBe(15_000);
   });
 });
