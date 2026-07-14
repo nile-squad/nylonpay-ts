@@ -40,6 +40,9 @@ export type PaymentMethod = "mobileMoney" | "bank";
  */
 export type TransactionMode = "test" | "live";
 
+/** Merchant choice when a payment is flagged delayed but still pending. */
+export type OnDelayedBehavior = "wait" | "return";
+
 /**
  * Events emitted by a PaymentInstance as a transaction progresses.
  * Merchants subscribe to these to react to status changes without
@@ -240,6 +243,8 @@ export type Transaction = {
   failureReason: string | null;
   metadata: Record<string, string>;
   mode: TransactionMode;
+  /** True when the payment has been pending longer than the delayed threshold. */
+  delayed?: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -253,6 +258,8 @@ export type StatusResponse = {
   status: TransactionStatus;
   amount: number;
   currency: Currency;
+  /** True when the payment has been pending longer than the delayed threshold. */
+  delayed?: boolean;
   updatedAt: string;
 };
 
@@ -417,8 +424,12 @@ export type NylonPayConfig = {
   timeoutMs?: number;
   maxRetries?: number;
   maxPollIntervalMs?: number;
+  /** Optional cap — omit to wait until the payment reaches a terminal state. */
   maxPollDurationMs?: number;
+  /** Optional cap — omit to wait until the payment reaches a terminal state. */
   maxPollAttempts?: number;
+  /** When a payment is flagged delayed, keep waiting (default) or return it pending. */
+  onDelayed?: OnDelayedBehavior;
   fetch?: typeof globalThis.fetch;
   /** Force a new instance even if one already exists for this key+url pair. */
   force?: boolean;

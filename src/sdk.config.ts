@@ -11,11 +11,14 @@ export const DEFAULT_MAX_RETRIES = 3;
 /** Default polling interval between status checks (2 seconds) */
 export const DEFAULT_MAX_POLL_INTERVAL_MS = 2_000;
 
-/** Default max total polling duration before timing out (5 minutes) */
-export const DEFAULT_MAX_POLL_DURATION_MS = 300_000;
+/**
+ * Optional merchant cap on total polling duration. Undefined = wait until terminal.
+ * Previously defaulted to 5 minutes; merchants set this explicitly to bound waits.
+ */
+export const DEFAULT_MAX_POLL_DURATION_MS = undefined;
 
-/** Default max polling attempts before giving up */
-export const DEFAULT_MAX_POLL_ATTEMPTS = 150;
+/** Optional merchant cap on poll attempts. Undefined = wait until terminal. */
+export const DEFAULT_MAX_POLL_ATTEMPTS = undefined;
 
 /**
  * Random jitter (ms) added to each poll interval so many concurrent payments

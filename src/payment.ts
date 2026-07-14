@@ -8,12 +8,14 @@
 
 import type { Result } from "slang-ts";
 import { createEmitter, type Emitter } from "./pubsub";
+import { resolvePollIntervalMs } from "./poll-interval";
 import { POLL_JITTER_MS } from "./sdk.config";
 import { parseError } from "./transport";
 import type {
   EventData,
   GetStatusInput,
   GetTransactionInput,
+  OnDelayedBehavior,
   PaymentEvent,
   PaymentEventHandler,
   PaymentInstance,
@@ -37,6 +39,8 @@ type PaymentState = {
   resolved: boolean;
   pollAttempts: number;
   pollStartTime: number;
+  onDelayed: OnDelayedBehavior;
+  earlyReturnPending: boolean;
   emitter: Emitter<PaymentEvent>;
   fetchStatus: (
     input: GetStatusInput,
@@ -45,8 +49,8 @@ type PaymentState = {
     input: GetTransactionInput,
   ) => Promise<Result<Transaction, string>>;
   pollIntervalMs: number;
-  maxPollDuration: number;
-  maxPollAttempts: number;
+  maxPollDuration?: number;
+  maxPollAttempts?: number;
 };
 
 /**
@@ -102,9 +106,10 @@ export function createPaymentInstance(
     fetchTransaction: (
       input: GetTransactionInput,
     ) => Promise<Result<Transaction, string>>;
-    pollIntervalMs?: number;
-    maxPollDuration?: number;
-    maxPollAttempts?: number;
+  pollIntervalMs?: number;
+  maxPollDuration?: number;
+  maxPollAttempts?: number;
+  onDelayed?: OnDelayedBehavior;
     /**
      * When set, the operation never started (the backend rejected initiation).
      * The instance emits this as an `"error"` event on the next tick instead of
@@ -122,12 +127,14 @@ export function createPaymentInstance(
     resolved: false,
     pollAttempts: 0,
     pollStartTime: Date.now(),
+    onDelayed: deps.onDelayed ?? "wait",
+    earlyReturnPending: false,
     emitter: createEmitter<PaymentEvent>(),
     fetchStatus: deps.fetchStatus,
     fetchTransaction: deps.fetchTransaction,
     pollIntervalMs: deps.pollIntervalMs ?? 2000,
-    maxPollDuration: deps.maxPollDuration ?? 300000,
-    maxPollAttempts: deps.maxPollAttempts ?? 150,
+    maxPollDuration: deps.maxPollDuration,
+    maxPollAttempts: deps.maxPollAttempts,
   };
 
   function resolveWithError(
@@ -218,6 +225,15 @@ export function createPaymentInstance(
     const newStatus = normalizeStatus(response.status);
     state.status = newStatus;
 
+    if (
+      response.delayed &&
+      state.onDelayed === "return" &&
+      !TERMINAL_STATES.has(newStatus)
+    ) {
+      await returnPendingEarly();
+      return;
+    }
+
     // Dedupe by *event*, not raw status — "pending" and "processing" both map
     // to the "processing" event, and a status flap (processing → pending) must
     // not re-fire it. Each lifecycle event fires at most once per instance.
@@ -232,6 +248,18 @@ export function createPaymentInstance(
       return;
     }
     emitEvent(event);
+  }
+
+  async function returnPendingEarly(): Promise<void> {
+    const txResult = await state.fetchTransaction({
+      reference: state.reference,
+    });
+    if (txResult.isOk) {
+      state.transaction = txResult.value;
+    }
+    state.earlyReturnPending = true;
+    state.resolved = true;
+    stopUpdates();
   }
 
   /**
@@ -264,7 +292,11 @@ export function createPaymentInstance(
       return;
     }
 
-    const delay = state.pollIntervalMs + Math.random() * POLL_JITTER_MS;
+    const delay =
+      resolvePollIntervalMs({
+        baseIntervalMs: state.pollIntervalMs,
+        pollStartTimeMs: state.pollStartTime,
+      }) + Math.random() * POLL_JITTER_MS;
     state.pollingTimer = setTimeout(() => {
       state.pollingTimer = null;
       void pollStatus();
@@ -281,7 +313,10 @@ export function createPaymentInstance(
       return;
     }
 
-    if (state.pollAttempts >= state.maxPollAttempts) {
+    if (
+      state.maxPollAttempts !== undefined &&
+      state.pollAttempts >= state.maxPollAttempts
+    ) {
       resolveWithError(
         "Timed out waiting for the transaction status to update",
         "timeout",
@@ -289,7 +324,10 @@ export function createPaymentInstance(
       return;
     }
 
-    if (Date.now() - state.pollStartTime >= state.maxPollDuration) {
+    if (
+      state.maxPollDuration !== undefined &&
+      Date.now() - state.pollStartTime >= state.maxPollDuration
+    ) {
       resolveWithError(
         "Timed out waiting for the transaction status to update",
         "timeout",
@@ -400,6 +438,10 @@ export function createPaymentInstance(
   function wait(): Promise<Transaction | null> {
     return new Promise((resolve) => {
       if (state.resolved) {
+        if (state.earlyReturnPending && state.transaction) {
+          resolve(state.transaction);
+          return;
+        }
         resolve(
           state.status === "successful" && state.transaction
             ? state.transaction

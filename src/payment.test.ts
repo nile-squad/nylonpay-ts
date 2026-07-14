@@ -385,6 +385,71 @@ describe("createPaymentInstance", () => {
       expect(deps.fetchStatus).toHaveBeenCalledTimes(0);
     });
 
+    it("returns pending transaction when delayed and onDelayed is return", async () => {
+      const deps = { ...createMockDeps(), onDelayed: "return" as const };
+      deps.fetchStatus.mockResolvedValue(
+        Ok({
+          reference: "test-ref",
+          status: "pending",
+          amount: 1000,
+          currency: "UGX",
+          updatedAt: "2024-01-01T00:00:01Z",
+          delayed: true,
+        }),
+      );
+      deps.fetchTransaction.mockResolvedValue(
+        Ok({ ...mockTransaction, status: "pending", delayed: true }),
+      );
+
+      const instance = createPaymentInstance(
+        { reference: "test-ref", status: "pending" },
+        deps,
+      );
+
+      await vi.advanceTimersByTimeAsync(10);
+      const tx = await instance.wait();
+
+      expect(tx?.status).toBe("pending");
+      expect(tx?.delayed).toBe(true);
+      expect(deps.fetchStatus).toHaveBeenCalledTimes(1);
+    });
+
+    it("continues polling when delayed and onDelayed is wait", async () => {
+      const deps = { ...createMockDeps(), onDelayed: "wait" as const };
+      deps.fetchStatus
+        .mockResolvedValueOnce(
+          Ok({
+            reference: "test-ref",
+            status: "pending",
+            amount: 1000,
+            currency: "UGX",
+            updatedAt: "2024-01-01T00:00:01Z",
+            delayed: true,
+          }),
+        )
+        .mockResolvedValueOnce(
+          Ok({
+            reference: "test-ref",
+            status: "successful",
+            amount: 1000,
+            currency: "UGX",
+            updatedAt: "2024-01-01T00:00:02Z",
+          }),
+        );
+      deps.fetchTransaction.mockResolvedValue(Ok(mockTransaction));
+
+      const instance = createPaymentInstance(
+        { reference: "test-ref", status: "pending" },
+        deps,
+      );
+      instance.on("success", vi.fn());
+
+      await vi.advanceTimersByTimeAsync(10);
+      await vi.advanceTimersByTimeAsync(10);
+
+      expect(deps.fetchStatus).toHaveBeenCalledTimes(2);
+    });
+
     it("emits error and stops polling on reference mismatch", async () => {
       const handler = vi.fn();
       const deps = createMockDeps();

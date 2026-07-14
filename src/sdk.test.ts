@@ -188,6 +188,55 @@ describe("createNylonPay", () => {
       }
     });
 
+    it("collectPaymentAndResolve continues polling when server returns pending", async () => {
+      vi.useFakeTimers();
+      mockSend.mockImplementation(({ action }) => {
+        if (action === "sdk-collect-payment-and-resolve") {
+          return Promise.resolve(
+            Ok({ ...mockTransaction, status: "pending" as const }),
+          );
+        }
+        if (action === "sdk-get-status") {
+          return Promise.resolve(
+            Ok({
+              reference: "test-ref",
+              status: "successful" as const,
+              amount: 1000,
+              currency: "UGX" as const,
+              updatedAt: "2024-01-01T00:00:02Z",
+            }),
+          );
+        }
+        if (action === "sdk-get-transaction") {
+          return Promise.resolve(Ok(mockTransaction));
+        }
+        return Promise.resolve(Err("unexpected action"));
+      });
+
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+        maxPollIntervalMs: 10,
+      });
+
+      const resultPromise = sdk.collectPaymentAndResolve({
+        amount: 1000,
+        currency: "UGX",
+        customer: { name: "Test", phoneNumber: "+256700000000" },
+        description: "Test payment",
+      });
+
+      await vi.advanceTimersByTimeAsync(10);
+      const result = await resultPromise;
+
+      expect(result.isOk).toBe(true);
+      if (result.isOk) {
+        expect(result.value.status).toBe("successful");
+      }
+      vi.useRealTimers();
+    });
+
     it("makePayout returns PaymentInstance", async () => {
       mockSend.mockResolvedValue(
         Ok({ reference: "payout-ref", status: "pending" }),

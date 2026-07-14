@@ -21,8 +21,6 @@ import { createHash } from "node:crypto";
 import { createSdkInstance, type NylonPaySdk } from "./sdk";
 import {
   DEFAULT_BASE_URL,
-  DEFAULT_MAX_POLL_ATTEMPTS,
-  DEFAULT_MAX_POLL_DURATION_MS,
   DEFAULT_MAX_POLL_INTERVAL_MS,
   DEFAULT_MAX_RETRIES,
   DEFAULT_TIMEOUT_MS,
@@ -79,8 +77,9 @@ export function createNylonPay(config: NylonPayConfig): NylonPaySdk {
     timeoutMs: config.timeoutMs ?? DEFAULT_TIMEOUT_MS,
     maxRetries: config.maxRetries ?? DEFAULT_MAX_RETRIES,
     maxPollIntervalMs: config.maxPollIntervalMs ?? DEFAULT_MAX_POLL_INTERVAL_MS,
-    maxPollDurationMs: config.maxPollDurationMs ?? DEFAULT_MAX_POLL_DURATION_MS,
-    maxPollAttempts: config.maxPollAttempts ?? DEFAULT_MAX_POLL_ATTEMPTS,
+    maxPollDurationMs: config.maxPollDurationMs,
+    maxPollAttempts: config.maxPollAttempts,
+    onDelayed: config.onDelayed ?? "wait",
     fetch: config.fetch ?? globalThis.fetch.bind(globalThis),
     hooks: config.hooks,
   };

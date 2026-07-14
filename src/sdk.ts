@@ -6,6 +6,8 @@
 import { randomUUID } from "node:crypto";
 import { Err, Ok, type Result, safeTry } from "slang-ts";
 import { createPaymentInstance } from "./payment";
+import { pollUntilTerminal } from "./poll-until-terminal";
+import { isTerminalTransactionStatus } from "./poll-interval";
 import { isValidPhoneFormat, normalizePhone } from "./phone";
 import { SDK_ACTIONS } from "./sdk.config";
 import { createSdkError, createTransport, parseError } from "./transport";
@@ -40,8 +42,9 @@ type ResolvedConfig = {
   timeoutMs: number;
   maxRetries: number;
   maxPollIntervalMs: number;
-  maxPollDurationMs: number;
-  maxPollAttempts: number;
+  maxPollDurationMs?: number;
+  maxPollAttempts?: number;
+  onDelayed: "wait" | "return";
   fetch: typeof globalThis.fetch;
   hooks?: SdkHooks;
 };
@@ -243,7 +246,29 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
     pollIntervalMs: config.maxPollIntervalMs,
     maxPollDuration: config.maxPollDurationMs,
     maxPollAttempts: config.maxPollAttempts,
+    onDelayed: config.onDelayed,
   };
+
+  const pollDeps = {
+    fetchStatus: commonDeps.fetchStatus,
+    fetchTransaction: commonDeps.fetchTransaction,
+    maxPollAttempts: config.maxPollAttempts,
+    maxPollDurationMs: config.maxPollDurationMs,
+    onDelayed: config.onDelayed,
+    pollIntervalMs: config.maxPollIntervalMs,
+  };
+
+  async function continueResolveIfNeeded(
+    transaction: Transaction,
+  ): Promise<Result<Transaction, string>> {
+    if (isTerminalTransactionStatus(transaction.status)) {
+      return Ok(transaction);
+    }
+    return pollUntilTerminal({
+      ...pollDeps,
+      reference: transaction.reference,
+    });
+  }
 
   /**
    * Initiate a collection payment.
@@ -324,7 +349,7 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
     );
 
     if (result.isOk) {
-      return Ok(result.value);
+      return continueResolveIfNeeded(result.value);
     }
     return Err(result.error);
   }
@@ -397,7 +422,7 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
     );
 
     if (result.isOk) {
-      return Ok(result.value);
+      return continueResolveIfNeeded(result.value);
     }
     return Err(result.error);
   }

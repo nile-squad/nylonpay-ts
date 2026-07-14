@@ -45,8 +45,9 @@ Use your test keys to work in sandbox, or your production keys to go live. There
 | `timeoutMs` | No | `30000` | Request timeout in milliseconds |
 | `maxRetries` | No | `3` | Retry count for failed requests |
 | `maxPollIntervalMs` | No | `2000` | Polling interval for async payments |
-| `maxPollDurationMs` | No | `300000` | Maximum polling duration in milliseconds |
-| `maxPollAttempts` | No | `150` | Maximum polling attempts |
+| `maxPollDurationMs` | No | *(none)* | Optional cap on total polling time. Omit to wait until terminal. |
+| `maxPollAttempts` | No | *(none)* | Optional cap on poll count. Omit to wait until terminal. |
+| `onDelayed` | No | `"wait"` | `"return"` hands back a delayed still-pending payment; `"wait"` keeps polling |
 
 ## Operations
 
@@ -197,6 +198,23 @@ payment.off("success", handler);
 
 const tx = await payment.wait();
 ```
+
+**Delayed payments (v1.4+):** By default `wait()` keeps polling until the payment finishes. After about three minutes in flight, status responses include `delayed: true`. To hand control back early and rely on webhooks instead:
+
+```ts
+const nylonpay = createNylonPay({
+  apiKey: "npk_...",
+  apiSecret: "nps_...",
+  onDelayed: "return",
+});
+
+const tx = await nylonpay.collectPaymentAndResolve({ /* ... */ });
+if (tx.isOk && tx.value.delayed && tx.value.status === "pending") {
+  // Payment still in flight — listen for webhooks
+}
+```
+
+Set `maxPollDurationMs` if you want the previous ~5 minute timeout behavior.
 
 Use `safeTry` from `slang-ts` to handle the promise without try/catch:
 
