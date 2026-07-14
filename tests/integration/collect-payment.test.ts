@@ -90,7 +90,7 @@ describe("collectPayment", () => {
     } else {
       expect(tx.failureReason).toBeNull();
     }
-  }, 30_000);
+  });
 
   it("I18: metadata round-trips through getTransaction", async () => {
     const ref = crypto.randomUUID();

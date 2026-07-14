@@ -16,12 +16,15 @@ export function createTestSdk() {
     );
   }
   // force: true so each test file gets a fresh instance (avoids singleton
-  // sharing state like poll timers across test suites)
+  // sharing state like poll timers across test suites).
+  // Cap client polling so unbounded wait/AndResolve cannot outlive the suite
+  // timeout (aborted mid-request surfaces as a misleading network error).
   return createNylonPay({
     apiKey,
     apiSecret,
     baseUrl: TEST_BASE_URL,
     force: true,
+    maxPollDurationMs: 60_000,
   });
 }
 

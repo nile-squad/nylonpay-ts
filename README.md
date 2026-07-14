@@ -199,7 +199,7 @@ payment.off("success", handler);
 const tx = await payment.wait();
 ```
 
-**Delayed payments (v1.4+):** By default `wait()` keeps polling until the payment finishes. After about three minutes in flight, status responses include `delayed: true`. To hand control back early and rely on webhooks instead:
+**Delayed payments (v1.5+):** By default `wait()` keeps polling until the payment finishes. After about three minutes in flight, status responses include `delayed: true`. To hand control back early and rely on webhooks instead:
 
 ```ts
 const nylonpay = createNylonPay({

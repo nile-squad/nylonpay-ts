@@ -3,7 +3,9 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     include: ["tests/integration/**/*.test.ts"],
-    testTimeout: 30_000,
+    // Resolve/wait can need the full server inline budget (~60s) plus a short
+    // client poll continuation under maxPollDurationMs from createTestSdk.
+    testTimeout: 90_000,
     hookTimeout: 15_000,
     pool: "forks",
     poolOptions: { forks: { singleFork: true } },

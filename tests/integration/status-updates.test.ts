@@ -24,5 +24,5 @@ describe("status updates", () => {
     if (status.isOk) {
       expect(TERMINAL).toContain(status.value.status);
     }
-  }, 30_000);
+  });
 });

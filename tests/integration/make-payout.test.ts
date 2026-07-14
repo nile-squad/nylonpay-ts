@@ -65,7 +65,7 @@ describe("makePayout", () => {
     // The resolve variant must return a terminal status, not pending/processing.
     // A successful payout stuck at "pending" is the reported bug.
     expect(["successful", "failed", "cancelled"]).toContain(tx.status);
-  }, 30_000);
+  });
 
   it("I6: reuses the same transaction for a repeated reference (idempotency)", async () => {
     const ref = crypto.randomUUID();
