@@ -11,5 +11,6 @@ export default defineConfig({
     poolOptions: { forks: { singleFork: true } },
     reporters: ["verbose"],
     setupFiles: ["dotenv/config"],
+    globalSetup: ["tests/integration/global-setup.ts"],
   },
 });
