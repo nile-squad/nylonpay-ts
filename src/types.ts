@@ -4,10 +4,14 @@ import type { Result } from "slang-ts";
  * Lifecycle states a transaction can occupy. Merchants use these to drive
  * fulfillment logic: trigger order completion on "successful", notify
  * customer on "failed", release inventory on "cancelled".
+ *
+ * Non-terminal statuses: "pending", "processing", "on_hold" (review-stage payouts).
+ * Terminal statuses: "successful", "failed", "cancelled".
  */
 export type TransactionStatus =
   | "pending"
   | "processing"
+  | "on_hold"
   | "successful"
   | "failed"
   | "cancelled";
@@ -241,6 +245,13 @@ export type Transaction = {
   phone: string;
   email: string | null;
   failureReason: string | null;
+  /**
+   * Humanized status description. For `on_hold` statuses, this provides
+   * a plain-language explanation (e.g., "Payout is being reviewed and will
+   * complete shortly"). For failed transactions, this is typically the same
+   * as `failureReason`. Populated by the backend when available.
+   */
+  statusText?: string;
   metadata: Record<string, string>;
   mode: TransactionMode;
   /** True when the payment has been pending longer than the delayed threshold. */
@@ -258,6 +269,12 @@ export type StatusResponse = {
   status: TransactionStatus;
   amount: number;
   currency: Currency;
+  /**
+   * Humanized status description. For `on_hold` statuses, this provides
+   * a plain-language explanation (e.g., "Payout is being reviewed and will
+   * complete shortly"). Populated by the backend when available.
+   */
+  statusText?: string;
   /** True when the payment has been pending longer than the delayed threshold. */
   delayed?: boolean;
   updatedAt: string;
@@ -309,6 +326,8 @@ export type WebhookTransactionSnapshot = {
   mode: TransactionMode;
   failureReason: string | null;
   operatorTid: string | null;
+  /** Humanized status description (e.g., for `on_hold` reviews). */
+  statusText?: string;
 };
 
 /**
@@ -516,6 +535,10 @@ export type TransportResult<T> = Result<T, string>;
  * `cancelled`) — the `processing` event can fire before the full record is
  * fetched, so use `reference` there. `error` is populated for the `"error"`
  * event (network failure, timeout, reference mismatch).
+ *
+ * Note: The `processing` event fires for all non-terminal statuses, including
+ * `on_hold` (review-stage payouts). Use `transaction?.statusText` for
+ * human-readable status details when available.
  *
  * @example
  * ```ts

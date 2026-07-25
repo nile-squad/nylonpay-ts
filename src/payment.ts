@@ -54,16 +54,20 @@ type PaymentState = {
 };
 
 /**
- * Map transaction status to payment event. Both "pending" and "processing"
- * map to the "processing" event — to the merchant they are the same lifecycle
- * moment (payment accepted, in flight, awaiting the customer/provider).
- * Emission is deduped by event, so pending → processing never double-fires.
+ * Map transaction status to payment event. "pending", "processing", and "on_hold"
+ * all map to the "processing" event — to the merchant they are the same lifecycle
+ * moment (payment accepted, in flight, awaiting the customer/provider or under review).
+ * Emission is deduped by event, so status flaps never double-fire the same event.
+ *
+ * "on_hold" (review-stage payout) is a non-terminal status — it continues polling
+ * until the payout reaches a terminal state (successful, failed, or cancelled).
  */
 const STATUS_TO_EVENT: Partial<Record<TransactionStatus, PaymentEvent>> = {
   pending: "processing",
+  processing: "processing",
+  on_hold: "processing",
   successful: "success",
   failed: "failed",
-  processing: "processing",
   cancelled: "cancelled",
 };
 
@@ -71,7 +75,10 @@ function statusToEvent(status: TransactionStatus): PaymentEvent | null {
   return STATUS_TO_EVENT[status] ?? null;
 }
 
-/** Terminal states that stop polling. */
+/**
+ * Terminal states that stop polling. Non-terminal states like "on_hold"
+ * (review-stage payouts) continue polling until reaching a terminal state.
+ */
 const TERMINAL_STATES = new Set<TransactionStatus>([
   "successful",
   "failed",

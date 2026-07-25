@@ -118,6 +118,46 @@ const result = await nylonpay.makePayoutAndResolve({
 });
 ```
 
+## Payout Lifecycle
+
+`makePayout` returns immediately with a `reference` for tracking and idempotent retries. The payout status flows through several stages:
+
+- **`pending`** — Payout accepted and queued for processing
+- **`processing`** — Provider is actively handling the disbursement
+- **`on_hold`** — Payout is under review (liquidity or compliance checks). Non-terminal; will complete to `successful`, `failed`, or `cancelled`.
+- **`successful`** — Payout completed; funds sent to destination
+- **`failed`** — Payout failed; funds refunded to merchant account
+- **`cancelled`** — Payout was cancelled by the merchant
+
+**Polling and webhooks:** Monitor payout progress by:
+1. Subscribing to `"processing"` events (covers `pending`, `processing`, and `on_hold` states)
+2. Listening for terminal events: `"success"`, `"failed"`, `"cancelled"`
+3. Receiving webhook notifications at your configured endpoint
+
+The SDK treats `on_hold` as a non-terminal status — polling continues automatically until the payout reaches a terminal state. Use the `statusText` field for human-readable details about review holds.
+
+```ts
+const payout = await nylonpay.makePayout({ /* ... */ });
+
+payout.on("processing", ({ reference, transaction }) => {
+  // Payout is in flight (pending, processing, or on_hold)
+  if (transaction?.status === "on_hold") {
+    console.log("Payout under review:", transaction.statusText);
+    // "Payout is being reviewed and will complete shortly"
+  }
+});
+
+payout.on("success", ({ transaction }) => {
+  console.log("Payout complete:", transaction?.reference);
+});
+
+// Or wait for terminal state
+const tx = await payout.wait();
+if (tx) {
+  console.log("Final status:", tx.status);
+}
+```
+
 ### getStatus
 
 One-shot status check for a transaction. Does not poll, returns the current server-side state.
@@ -181,15 +221,17 @@ app.post("/webhooks", (req, res) => {
 
 ## PaymentInstance Events
 
-`collectPayment` and `makePayout` return a `PaymentInstance` with event-driven updates.
+`collectPayment` and `makePayout` return a `PaymentInstance` with event-driven updates. The SDK automatically polls for status changes and emits events as the transaction progresses.
 
 | Event | Description |
 |---|---|
-| `processing` | Transaction is being processed |
+| `processing` | Transaction is being processed (covers `pending`, `processing`, and `on_hold` states) |
 | `success` | Transaction completed successfully |
 | `failed` | Transaction failed |
 | `cancelled` | Transaction was cancelled |
 | `error` | Network or polling error |
+
+For payouts specifically, `on_hold` indicates the payout is under review (liquidity or compliance checks). Polling continues automatically; use `transaction?.statusText` for a human-readable explanation.
 
 ```ts
 payment.on("success", ({ transaction }) => { /* ... */ });

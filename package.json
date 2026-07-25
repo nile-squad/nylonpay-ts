@@ -1,6 +1,6 @@
 {
   "name": "@nile-squad/nylonpay-ts",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "Nylon Pay SDK for merchant integrations",
   "keywords": [
     "nylonpay",

@@ -240,6 +240,68 @@ describe("createPaymentInstance", () => {
       expect(handler).toHaveBeenCalledTimes(1);
     });
 
+    it("emits processing event when status changes to on_hold", async () => {
+      const handler = vi.fn();
+      const deps = createMockDeps();
+      deps.fetchStatus.mockResolvedValue(
+        Ok({
+          reference: "test-ref",
+          status: "on_hold",
+          amount: 1000,
+          currency: "UGX",
+          updatedAt: "2024-01-01T00:00:01Z",
+          statusText: "Payout is being reviewed and will complete shortly",
+        }),
+      );
+
+      const instance = createPaymentInstance(
+        { reference: "test-ref", status: "pending" },
+        deps,
+      );
+      instance.on("processing", handler);
+
+      await vi.advanceTimersByTimeAsync(10);
+
+      expect(handler).toHaveBeenCalledTimes(1);
+      expect(handler).toHaveBeenCalledWith(
+        expect.objectContaining({ event: "processing", reference: "test-ref" }),
+      );
+    });
+
+    it("does not re-fire processing when status flaps pending → on_hold → pending", async () => {
+      const handler = vi.fn();
+      const deps = createMockDeps();
+      deps.fetchStatus
+        .mockResolvedValueOnce(
+          Ok({
+            reference: "test-ref",
+            status: "on_hold",
+            amount: 1000,
+            currency: "UGX",
+            updatedAt: "2024-01-01T00:00:01Z",
+          }),
+        )
+        .mockResolvedValue(
+          Ok({
+            reference: "test-ref",
+            status: "pending",
+            amount: 1000,
+            currency: "UGX",
+            updatedAt: "2024-01-01T00:00:02Z",
+          }),
+        );
+
+      const instance = createPaymentInstance(
+        { reference: "test-ref", status: "pending" },
+        deps,
+      );
+      instance.on("processing", handler);
+
+      await vi.advanceTimersByTimeAsync(30);
+
+      expect(handler).toHaveBeenCalledTimes(1);
+    });
+
     it("includes the reference on every event payload", async () => {
       const handler = vi.fn();
       const deps = createMockDeps();
@@ -324,6 +386,45 @@ describe("createPaymentInstance", () => {
 
       await vi.advanceTimersByTimeAsync(100);
       expect(deps.fetchStatus).toHaveBeenCalledTimes(1);
+    });
+
+    it("continues polling when on_hold (review-stage payout)", async () => {
+      const deps = createMockDeps();
+      deps.fetchStatus
+        .mockResolvedValueOnce(
+          Ok({
+            reference: "test-ref",
+            status: "on_hold",
+            amount: 1000,
+            currency: "UGX",
+            updatedAt: "2024-01-01T00:00:01Z",
+            statusText: "Payout is being reviewed and will complete shortly",
+          }),
+        )
+        .mockResolvedValueOnce(
+          Ok({
+            reference: "test-ref",
+            status: "successful",
+            amount: 1000,
+            currency: "UGX",
+            updatedAt: "2024-01-01T00:00:02Z",
+          }),
+        );
+      deps.fetchTransaction.mockResolvedValue(Ok(mockTransaction));
+
+      const instance = createPaymentInstance(
+        { reference: "test-ref", status: "pending" },
+        deps,
+      );
+      instance.on("success", vi.fn());
+
+      await vi.advanceTimersByTimeAsync(10);
+      expect(deps.fetchStatus).toHaveBeenCalledTimes(1);
+      expect(instance.status).toBe("on_hold");
+
+      await vi.advanceTimersByTimeAsync(10);
+      expect(deps.fetchStatus).toHaveBeenCalledTimes(2);
+      expect(instance.status).toBe("successful");
     });
 
     it("stops polling on max attempts exceeded", async () => {

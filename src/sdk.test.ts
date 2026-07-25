@@ -843,6 +843,56 @@ describe("createNylonPay", () => {
       expect(instance.reference).toBe("payout-ref");
     });
 
+    it("makePayout returns reference as idempotency key for retries", async () => {
+      const idempotencyKey = "550e8400-e29b-41d4-a716-446655440000";
+      mockSend.mockResolvedValue(
+        Ok({ reference: idempotencyKey, status: "pending" }),
+      );
+
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+      });
+
+      const instance = await sdk.makePayout({
+        amount: 10000,
+        currency: "UGX",
+        customer: { name: "Test", phoneNumber: "+256700000000" },
+        destination: { accountHolderName: "Test", accountNumber: "1234567890" },
+        description: "Test payout",
+        reference: idempotencyKey,
+      });
+
+      // The reference is the idempotency key — retrying with the same reference
+      // never creates two payouts.
+      expect(instance.reference).toBe(idempotencyKey);
+    });
+
+    it("makePayout treats on_hold as non-terminal status", async () => {
+      mockSend.mockResolvedValue(
+        Ok({ reference: "payout-ref", status: "on_hold" }),
+      );
+
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+      });
+
+      const instance = await sdk.makePayout({
+        amount: 50000,
+        currency: "UGX",
+        customer: { name: "Test", phoneNumber: "+256700000000" },
+        destination: { accountHolderName: "Test", accountNumber: "1234567890" },
+        description: "Test payout under review",
+      });
+
+      // on_hold is non-terminal; the instance should poll for terminal state
+      expect(instance.status).toBe("on_hold");
+      expect(instance.reference).toBe("payout-ref");
+    });
+
     // VULN-002: malformed phone numbers must fail the cheap client-side check
     // before a network round-trip, not pass through normalizePhone unchanged.
     it.each([
