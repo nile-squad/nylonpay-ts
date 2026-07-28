@@ -23,6 +23,11 @@ never published; its changes are included here.)
 
 ### Breaking
 
+- **`InvoiceItem.amount` renamed to `unitPrice`.** The backend has always
+  required `unitPrice`; the SDK type and the spec both said `amount`, so
+  `createInvoice` with line items failed validation for every merchant who
+  followed the documented shape. Rename the field in your item objects — the
+  value is unchanged (price per unit, smallest currency unit).
 - **`toleranceSeconds: 0` flips meaning** (see Security above). If you passed
   `0` to disable the freshness check, import and pass `DISABLE_FRESHNESS_CHECK`
   instead — otherwise stale webhooks start being rejected.

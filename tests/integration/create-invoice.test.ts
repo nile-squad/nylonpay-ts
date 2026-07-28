@@ -1,8 +1,12 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import type { NylonPaySdk } from "../../dist/index.js";
-import { createTestSdk } from "./setup.js";
+import { createTestSdk, isLiveMode } from "./setup.js";
 
-describe("createInvoice", () => {
+// Invoices are live-mode only: the backend rejects them with "Payment links are
+// not available in sandbox mode", so with a sandbox key these can only ever
+// fail. Skipping is honest; leaving them red would train everyone to ignore a
+// permanently-failing suite.
+describe.skipIf(!isLiveMode)("createInvoice", () => {
   let sdk: NylonPaySdk;
 
   beforeAll(() => {
@@ -32,8 +36,8 @@ describe("createInvoice", () => {
       customerName: "Test Customer",
       description: "Invoice with line items",
       items: [
-        { name: "Item A", quantity: 2, amount: 3000 },
-        { name: "Item B", quantity: 1, amount: 4000 },
+        { name: "Item A", quantity: 2, unitPrice: 3000 },
+        { name: "Item B", quantity: 1, unitPrice: 4000 },
       ],
     });
 

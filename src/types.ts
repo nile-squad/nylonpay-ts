@@ -105,8 +105,8 @@ export type Destination = {
 export type InvoiceItem = {
   name: string;
   quantity: number;
-  /** Amount per unit in smallest currency unit (e.g. UGX shillings). */
-  amount: number;
+  /** Price per unit in the smallest currency unit (e.g. UGX shillings). */
+  unitPrice: number;
 };
 
 /**
@@ -814,7 +814,7 @@ export interface NylonPaySdk {
    *   currency: "UGX",
    *   customerEmail: "jane@example.com",
    *   description: "Monthly subscription",
-   *   items: [{ name: "Pro Plan", quantity: 1, amount: 25000 }],
+   *   items: [{ name: "Pro Plan", quantity: 1, unitPrice: 25000 }],
    * });
    *
    * if (result.isOk) sendEmail(result.value.paymentLink);

@@ -509,8 +509,8 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
         if (!Number.isInteger(item.quantity) || item.quantity <= 0) {
           throwValidation("item quantity must be a positive integer");
         }
-        if (!Number.isInteger(item.amount) || item.amount <= 0) {
-          throwValidation("item amount must be a positive integer");
+        if (!Number.isInteger(item.unitPrice) || item.unitPrice <= 0) {
+          throwValidation("item unitPrice must be a positive integer");
         }
       }
     }

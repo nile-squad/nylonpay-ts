@@ -681,7 +681,7 @@ describe("createNylonPay", () => {
       const items = Array.from({ length: 51 }, (_, i) => ({
         name: `Item ${i}`,
         quantity: 1,
-        amount: 100,
+        unitPrice: 100,
       }));
 
       await expect(
@@ -708,12 +708,12 @@ describe("createNylonPay", () => {
           currency: "UGX",
           customerEmail: "customer@example.com",
           description: "Test",
-          items: [{ name: "Item", quantity: -1, amount: 100 }],
+          items: [{ name: "Item", quantity: -1, unitPrice: 100 }],
         }),
       ).rejects.toThrow("item quantity must be a positive integer");
     });
 
-    it("throws when createInvoice has zero item amount", async () => {
+    it("throws when createInvoice has zero item unitPrice", async () => {
       const sdk = createNylonPay({
         apiKey: "npk_test",
         apiSecret: "nps_test",
@@ -725,9 +725,9 @@ describe("createNylonPay", () => {
           amount: 1000,
           currency: "UGX",
           customerEmail: "customer@example.com",
-          items: [{ name: "Item", quantity: 1, amount: 0 }],
+          items: [{ name: "Item", quantity: 1, unitPrice: 0 }],
         }),
-      ).rejects.toThrow("item amount must be a positive integer");
+      ).rejects.toThrow("item unitPrice must be a positive integer");
     });
 
     it("throws when createInvoice has empty customerEmail", async () => {
