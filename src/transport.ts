@@ -146,7 +146,11 @@ function stripRequestNonce<T>(payload: T): {
   data: T;
   requestNonce: string | null;
 } {
-  if (!payload || typeof payload !== "object" || !("_requestNonce" in payload)) {
+  if (
+    !payload ||
+    typeof payload !== "object" ||
+    !("_requestNonce" in payload)
+  ) {
     return { data: payload, requestNonce: null };
   }
 

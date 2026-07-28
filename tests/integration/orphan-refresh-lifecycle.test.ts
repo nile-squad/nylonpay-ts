@@ -96,7 +96,9 @@ describe.skipIf(!hasAdminCredentials)(
         throw new Error(before.error);
       }
 
-      if (!IN_FLIGHT.includes(before.value.status as (typeof IN_FLIGHT)[number])) {
+      if (
+        !IN_FLIGHT.includes(before.value.status as (typeof IN_FLIGHT)[number])
+      ) {
         return;
       }
 
@@ -115,7 +117,9 @@ describe.skipIf(!hasAdminCredentials)(
       expect(after.value.failureReason).toBeNull();
 
       if (refresh.refreshed) {
-        expect(["successful", "pending", "processing"]).toContain(refresh.status);
+        expect(["successful", "pending", "processing"]).toContain(
+          refresh.status,
+        );
         return;
       }
 

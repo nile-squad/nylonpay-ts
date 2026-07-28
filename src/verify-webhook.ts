@@ -130,9 +130,7 @@ export function verifyWebhookSignature(input: VerifyWebhookInput): boolean {
 
     // Decoding for the timestamp read is safe here: the bytes are already
     // proven authentic, and a body that is not UTF-8 JSON simply yields null.
-    const timestampMs = extractSignedTimestampMs(
-      payloadBytes.toString("utf8")
-    );
+    const timestampMs = extractSignedTimestampMs(payloadBytes.toString("utf8"));
     if (timestampMs === null) {
       // Fail closed: a valid signature with no verifiable timestamp cannot be
       // proven fresh, so it cannot be distinguished from a replay.

@@ -261,18 +261,57 @@ describe("SDK security suite", () => {
 
     it("accepts a success response with a VALID signature", async () => {
       const data = { reference: "r", status: "successful" };
+      // The response must also echo the nonce the transport sent (S15) —
+      // a signature alone no longer satisfies verification.
       const transport = makeTransport(
-        vi
-          .fn()
-          .mockResolvedValue(
-            ok({ ...data, _responseSignature: sign(data, SECRET) }),
-          ),
+        vi.fn().mockImplementation((_url: string, options: RequestInit) => {
+          const bound = {
+            ...data,
+            _requestNonce: (options.headers as Record<string, string>)[
+              "x-nylon-nonce"
+            ],
+          };
+          return Promise.resolve(
+            ok({ ...bound, _responseSignature: sign(bound, SECRET) }),
+          );
+        }),
       );
       const result = await transport.send({
         action: "sdk-get-status",
         payload: {},
       });
       expect(result.isOk).toBe(true);
+    });
+
+    it("S15: rejects a response replayed from an earlier request", async () => {
+      const data = { reference: "r", status: "successful" };
+      let captured: Record<string, unknown> | null = null;
+      const transport = makeTransport(
+        vi.fn().mockImplementation((_url: string, options: RequestInit) => {
+          if (!captured) {
+            const bound = {
+              ...data,
+              _requestNonce: (options.headers as Record<string, string>)[
+                "x-nylon-nonce"
+              ],
+            };
+            captured = { ...bound, _responseSignature: sign(bound, SECRET) };
+          }
+          return Promise.resolve(ok(captured));
+        }),
+      );
+
+      const first = await transport.send({
+        action: "sdk-get-status",
+        payload: {},
+      });
+      const replayed = await transport.send({
+        action: "sdk-get-status",
+        payload: {},
+      });
+
+      expect(first.isOk).toBe(true);
+      expect(replayed.isErr).toBe(true);
     });
   });
 

@@ -18,9 +18,7 @@ const mockFetch = vi.fn();
  */
 function respondOnceSigned(data: Record<string, unknown> = {}) {
   mockFetch.mockImplementationOnce((_url: string, options: RequestInit) => {
-    const nonce = (options.headers as Record<string, string>)[
-      "x-nylon-nonce"
-    ];
+    const nonce = (options.headers as Record<string, string>)["x-nylon-nonce"];
     const bound = { ...data, _requestNonce: nonce };
     return Promise.resolve({
       ok: true,
@@ -28,12 +26,14 @@ function respondOnceSigned(data: Record<string, unknown> = {}) {
         Promise.resolve({
           status: true,
           message: "OK",
-          data: { ...bound, _responseSignature: signResponse(bound, "nps_test") },
+          data: {
+            ...bound,
+            _responseSignature: signResponse(bound, "nps_test"),
+          },
         }),
     });
   });
 }
-
 
 describe("createTransport", () => {
   beforeEach(() => {
@@ -221,7 +221,10 @@ describe("createTransport", () => {
           Promise.resolve({
             status: true,
             message: "OK",
-            data: { ...data, _responseSignature: signResponse(data, "nps_test") },
+            data: {
+              ...data,
+              _responseSignature: signResponse(data, "nps_test"),
+            },
           }),
       });
 

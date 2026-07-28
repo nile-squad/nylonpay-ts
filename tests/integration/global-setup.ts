@@ -16,8 +16,10 @@ export function ensureLocalIntegrationAdmin(): void {
     return;
   }
   if (
-    !(process.env.NYLONPAY_INTEGRATION_ADMIN_PASSWORD ??
-      process.env.NYLONPAY_ROOT_ADMIN_PASSWORD)
+    !(
+      process.env.NYLONPAY_INTEGRATION_ADMIN_PASSWORD ??
+      process.env.NYLONPAY_ROOT_ADMIN_PASSWORD
+    )
   ) {
     return;
   }
