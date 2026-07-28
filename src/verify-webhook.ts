@@ -11,6 +11,17 @@ import type { VerifyWebhookInput } from "./types";
 const DEFAULT_TOLERANCE_SECONDS = 300;
 
 /**
+ * Explicit opt-out of the freshness check.
+ *
+ * Must be passed deliberately. `toleranceSeconds: 0` does NOT disable the
+ * check — it means a tolerance of zero seconds, i.e. as strict as it gets,
+ * which in practice rejects almost everything. That is the safe reading: a
+ * developer reaching for `0` is asking for maximum strictness, and previously
+ * got the exact opposite (no freshness check at all, silently).
+ */
+export const DISABLE_FRESHNESS_CHECK = -1;
+
+/**
  * Raw bytes to sign. A Uint8Array is used as-is rather than round-tripped
  * through a string: decoding and re-encoding would silently rewrite any byte
  * sequence that is not valid UTF-8, producing a signature mismatch on a
@@ -75,7 +86,8 @@ function extractSignedTimestampMs(payloadString: string): number | null {
  *    captured `(body, signature)` pair stays cryptographically valid forever,
  *    but its embedded timestamp goes stale. Every genuine delivery, including
  *    retries hours later, is re-stamped and re-signed, so this never rejects
- *    legitimate traffic. Pass `toleranceSeconds: 0` to skip this check.
+ *    legitimate traffic. `toleranceSeconds: 0` means zero tolerance (maximum
+ *    strictness), NOT off — pass `DISABLE_FRESHNESS_CHECK` to opt out.
  *
  * @returns True when the signature is valid and (when enforced) the webhook is fresh. Never throws — returns false on any error.
  */
@@ -109,7 +121,7 @@ export function verifyWebhookSignature(input: VerifyWebhookInput): boolean {
     // Signature is authentic — now enforce freshness using the signed timestamp.
     const toleranceSeconds =
       input.toleranceSeconds ?? DEFAULT_TOLERANCE_SECONDS;
-    if (toleranceSeconds === 0) {
+    if (toleranceSeconds === DISABLE_FRESHNESS_CHECK) {
       return true;
     }
     if (toleranceSeconds < 0) {

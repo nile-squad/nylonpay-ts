@@ -132,6 +132,32 @@ function stripResponseSignature<T>(payload: T): {
   };
 }
 
+/**
+ * Pull the echoed request nonce out of a verified payload and return the data
+ * without it.
+ *
+ * The backend signs this nonce into the response, so it is as trustworthy as
+ * the signature itself once the HMAC verifies. Comparing it against the nonce
+ * we just sent is what makes a response answer THIS request: without it, a
+ * captured response stays validly signed forever and can be replayed to a
+ * later call for the same reference.
+ */
+function stripRequestNonce<T>(payload: T): {
+  data: T;
+  requestNonce: string | null;
+} {
+  if (!payload || typeof payload !== "object" || !("_requestNonce" in payload)) {
+    return { data: payload, requestNonce: null };
+  }
+
+  const { _requestNonce, ...rest } = payload as Record<string, unknown>;
+
+  return {
+    data: rest as T,
+    requestNonce: typeof _requestNonce === "string" ? _requestNonce : null,
+  };
+}
+
 /** Build the Nile.js request envelope. */
 function buildEnvelope({
   action,
@@ -361,8 +387,24 @@ export function createTransport({
             );
           }
 
+          // Signature proves who produced this; the echoed nonce proves it
+          // answers the request we just sent, and not an earlier one replayed.
+          const { data: unboundData, requestNonce: echoedNonce } =
+            stripRequestNonce(strippedData);
+
+          if (echoedNonce !== headers["x-nylon-nonce"]) {
+            cleanup();
+            return Err(
+              JSON.stringify({
+                category: "internal",
+                message: "Could not verify the server response",
+                retryable: false,
+              } satisfies SdkError),
+            );
+          }
+
           cleanup();
-          return Ok(strippedData as T);
+          return Ok(unboundData as T);
         }
 
         // status === false

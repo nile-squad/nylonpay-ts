@@ -1,6 +1,9 @@
 import { createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { verifyWebhookSignature } from "./verify-webhook";
+import {
+  DISABLE_FRESHNESS_CHECK,
+  verifyWebhookSignature,
+} from "./verify-webhook";
 
 const secret = "test-webhook-secret";
 
@@ -77,7 +80,7 @@ describe("verifyWebhookSignature", () => {
         payload: bytes,
         signature,
         secret,
-        toleranceSeconds: 0,
+        toleranceSeconds: DISABLE_FRESHNESS_CHECK,
       }),
     ).toBe(true);
   });
@@ -118,7 +121,7 @@ describe("verifyWebhookSignature", () => {
         payload: raw,
         signature: sign(raw),
         secret,
-        toleranceSeconds: 0,
+        toleranceSeconds: DISABLE_FRESHNESS_CHECK,
       }),
     ).toBe(true);
   });
@@ -188,7 +191,9 @@ describe("verifyWebhookSignature", () => {
       ).toBe(true);
     });
 
-    it("toleranceSeconds: 0 disables the freshness check (opt-out)", () => {
+    it("toleranceSeconds: 0 means zero tolerance, NOT off — a stale webhook is rejected", () => {
+      // The footgun this guards: a developer passing 0 to mean "strictest"
+      // used to silently get no freshness check at all.
       const stale = body({
         timestamp: new Date(Date.now() - 24 * 3_600_000).toISOString(),
       });
@@ -198,6 +203,20 @@ describe("verifyWebhookSignature", () => {
           signature: sign(stale),
           secret,
           toleranceSeconds: 0,
+        }),
+      ).toBe(false);
+    });
+
+    it("DISABLE_FRESHNESS_CHECK is the deliberate opt-out", () => {
+      const stale = body({
+        timestamp: new Date(Date.now() - 24 * 3_600_000).toISOString(),
+      });
+      expect(
+        verifyWebhookSignature({
+          payload: stale,
+          signature: sign(stale),
+          secret,
+          toleranceSeconds: DISABLE_FRESHNESS_CHECK,
         }),
       ).toBe(true);
     });

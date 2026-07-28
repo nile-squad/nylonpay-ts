@@ -208,9 +208,12 @@ export type VerifyWebhookInput = {
   /**
    * Replay-protection window in seconds. After the signature is verified, the
    * timestamp carried inside the signed body must be within this many seconds of
-   * now, or verification fails. Defaults to 300 (5 minutes). Set to `0` to
-   * disable the freshness check (not recommended — a captured webhook then
-   * verifies forever).
+   * now, or verification fails. Defaults to 300 (5 minutes).
+   *
+   * `0` means a tolerance of zero seconds — maximum strictness, which rejects
+   * essentially everything. It does NOT disable the check. To opt out, pass
+   * `DISABLE_FRESHNESS_CHECK` deliberately (not recommended — a captured
+   * webhook then verifies forever).
    */
   toleranceSeconds?: number;
 };

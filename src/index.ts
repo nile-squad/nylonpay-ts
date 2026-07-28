@@ -79,4 +79,7 @@ export type {
   WebhookTransactionSnapshot,
 } from "./types";
 // Standalone webhook verification utility
-export { verifyWebhookSignature } from "./verify-webhook";
+export {
+  DISABLE_FRESHNESS_CHECK,
+  verifyWebhookSignature,
+} from "./verify-webhook";

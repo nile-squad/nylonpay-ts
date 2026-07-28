@@ -11,6 +11,30 @@ function signResponse(payload: unknown, secret: string): string {
 
 const mockFetch = vi.fn();
 
+/**
+ * Mimic the backend: echo the request's nonce inside the SIGNED data. The SDK
+ * requires it — that echo is what proves a response answers THIS request
+ * rather than being an older one replayed onto it.
+ */
+function respondOnceSigned(data: Record<string, unknown> = {}) {
+  mockFetch.mockImplementationOnce((_url: string, options: RequestInit) => {
+    const nonce = (options.headers as Record<string, string>)[
+      "x-nylon-nonce"
+    ];
+    const bound = { ...data, _requestNonce: nonce };
+    return Promise.resolve({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          status: true,
+          message: "OK",
+          data: { ...bound, _responseSignature: signResponse(bound, "nps_test") },
+        }),
+    });
+  });
+}
+
+
 describe("createTransport", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -33,15 +57,7 @@ describe("createTransport", () => {
 
   describe("envelope format", () => {
     it("sends request with correct envelope structure", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            status: true,
-            message: "OK",
-            data: { _responseSignature: signResponse({}, "nps_test") },
-          }),
-      });
+      respondOnceSigned();
 
       const transport = createTestTransport();
       await transport.send({
@@ -62,15 +78,7 @@ describe("createTransport", () => {
     });
 
     it("injects _fingerprint into payload", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            status: true,
-            message: "OK",
-            data: { _responseSignature: signResponse({}, "nps_test") },
-          }),
-      });
+      respondOnceSigned();
 
       const transport = createTestTransport();
       await transport.send({
@@ -85,15 +93,7 @@ describe("createTransport", () => {
     });
 
     it("includes auth headers", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            status: true,
-            message: "OK",
-            data: { _responseSignature: signResponse({}, "nps_test") },
-          }),
-      });
+      respondOnceSigned();
 
       const transport = createTestTransport();
       await transport.send({ action: "sdk-collect-payment", payload: {} });
@@ -112,18 +112,7 @@ describe("createTransport", () => {
   describe("response parsing", () => {
     it("returns Ok(data) when status is true and strips _responseSignature", async () => {
       const data = { reference: "ref-123", status: "pending" };
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            status: true,
-            message: "OK",
-            data: {
-              ...data,
-              _responseSignature: signResponse(data, "nps_test"),
-            },
-          }),
-      });
+      respondOnceSigned(data);
 
       const transport = createTestTransport();
       const result = await transport.send({
@@ -223,6 +212,68 @@ describe("createTransport", () => {
     });
   });
 
+  describe("response replay binding", () => {
+    it("rejects a correctly-signed response that does not echo the request nonce", async () => {
+      const data = { status: "successful" };
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            status: true,
+            message: "OK",
+            data: { ...data, _responseSignature: signResponse(data, "nps_test") },
+          }),
+      });
+
+      const transport = createTestTransport();
+      const result = await transport.send({
+        action: "sdk-get-status",
+        payload: {},
+      });
+
+      expect(result.isErr).toBe(true);
+    });
+
+    it("rejects a genuine response replayed onto a later request", async () => {
+      // The real attack: capture one legitimately-signed response and replay
+      // it. The HMAC still verifies — only the nonce binding catches it.
+      const data = { status: "successful" };
+      let captured: Record<string, unknown> | null = null;
+
+      mockFetch.mockImplementation((_url: string, options: RequestInit) => {
+        if (!captured) {
+          const nonce = (options.headers as Record<string, string>)[
+            "x-nylon-nonce"
+          ];
+          const bound = { ...data, _requestNonce: nonce };
+          captured = {
+            ...bound,
+            _responseSignature: signResponse(bound, "nps_test"),
+          };
+        }
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({ status: true, message: "OK", data: captured }),
+        });
+      });
+
+      const transport = createTestTransport();
+      const first = await transport.send({
+        action: "sdk-get-status",
+        payload: {},
+      });
+      const replayed = await transport.send({
+        action: "sdk-get-status",
+        payload: {},
+      });
+
+      expect(first.isOk).toBe(true);
+      expect(replayed.isErr).toBe(true);
+      mockFetch.mockReset();
+    });
+  });
+
   describe("retry behavior", () => {
     /**
      * Helper: start a send() call and advance fake timers to flush backoff delays.
@@ -244,22 +295,13 @@ describe("createTransport", () => {
     it.each([
       408, 429, 500, 502, 503, 504,
     ])("retries on HTTP %i", async (statusCode) => {
-      mockFetch
-        .mockResolvedValueOnce({
-          ok: false,
-          status: statusCode,
-          statusText: "Error",
-          json: () => Promise.resolve({}),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              status: true,
-              message: "OK",
-              data: { _responseSignature: signResponse({}, "nps_test") },
-            }),
-        });
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: statusCode,
+        statusText: "Error",
+        json: () => Promise.resolve({}),
+      });
+      respondOnceSigned();
 
       const transport = createTestTransport();
       const result = await sendWithTimerFlush(transport);
@@ -286,17 +328,8 @@ describe("createTransport", () => {
     });
 
     it("retries on network error", async () => {
-      mockFetch
-        .mockRejectedValueOnce(new Error("ECONNREFUSED"))
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              status: true,
-              message: "OK",
-              data: { _responseSignature: signResponse({}, "nps_test") },
-            }),
-        });
+      mockFetch.mockRejectedValueOnce(new Error("ECONNREFUSED"));
+      respondOnceSigned();
 
       const transport = createTestTransport();
       const result = await sendWithTimerFlush(transport);
@@ -310,15 +343,8 @@ describe("createTransport", () => {
         "The operation was aborted",
         "AbortError",
       );
-      mockFetch.mockRejectedValueOnce(abortError).mockResolvedValueOnce({
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            status: true,
-            message: "OK",
-            data: { _responseSignature: signResponse({}, "nps_test") },
-          }),
-      });
+      mockFetch.mockRejectedValueOnce(abortError);
+      respondOnceSigned();
 
       const transport = createTestTransport();
       const result = await sendWithTimerFlush(transport);
