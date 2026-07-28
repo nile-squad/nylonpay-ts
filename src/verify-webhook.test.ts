@@ -63,6 +63,47 @@ describe("verifyWebhookSignature", () => {
     ).toBe(true);
   });
 
+  it("signs the exact bytes given, without a UTF-8 round trip", () => {
+    // A lone 0xFF is not valid UTF-8. Decoding to a string and re-encoding
+    // would rewrite it as the replacement character and change the digest,
+    // failing a payload that is genuinely authentic.
+    const bytes = new Uint8Array([0x7b, 0xff, 0x7d]);
+    const signature = createHmac("sha256", secret)
+      .update(Buffer.from(bytes))
+      .digest("hex");
+
+    expect(
+      verifyWebhookSignature({
+        payload: bytes,
+        signature,
+        secret,
+        toleranceSeconds: 0,
+      }),
+    ).toBe(true);
+  });
+
+  it("rejects a non-canonical (uppercased) hex signature, matching the Python SDK", () => {
+    // Same value, second spelling. One canonical form only — comparing decoded
+    // bytes would otherwise let this through and put the two SDKs at odds.
+    const raw = body();
+    expect(
+      verifyWebhookSignature({
+        payload: raw,
+        signature: sign(raw).toUpperCase(),
+        secret,
+      }),
+    ).toBe(false);
+  });
+
+  it("accepts the canonical lowercase hex signature the backend sends", () => {
+    const raw = body();
+    const signature = sign(raw);
+    expect(signature).toBe(signature.toLowerCase());
+    expect(verifyWebhookSignature({ payload: raw, signature, secret })).toBe(
+      true,
+    );
+  });
+
   it("returns false when the signature is missing", () => {
     const raw = body();
     expect(
@@ -166,6 +207,36 @@ describe("verifyWebhookSignature", () => {
       expect(
         verifyWebhookSignature({ payload: raw, signature: sign(raw), secret }),
       ).toBe(true);
+    });
+
+    it("accepts a numeric-string timestamp, matching the Python SDK", () => {
+      const raw = JSON.stringify({
+        event: "x",
+        timestamp: String(Date.now()),
+      });
+      expect(
+        verifyWebhookSignature({ payload: raw, signature: sign(raw), secret }),
+      ).toBe(true);
+    });
+
+    it("accepts a numeric-string timestamp in epoch seconds", () => {
+      const raw = JSON.stringify({
+        event: "x",
+        timestamp: String(Math.floor(Date.now() / 1000)),
+      });
+      expect(
+        verifyWebhookSignature({ payload: raw, signature: sign(raw), secret }),
+      ).toBe(true);
+    });
+
+    it("still rejects a stale numeric-string timestamp", () => {
+      const raw = JSON.stringify({
+        event: "x",
+        timestamp: String(Date.now() - 600_000),
+      });
+      expect(
+        verifyWebhookSignature({ payload: raw, signature: sign(raw), secret }),
+      ).toBe(false);
     });
 
     it("cannot be refreshed by editing the timestamp (breaks the signature)", () => {

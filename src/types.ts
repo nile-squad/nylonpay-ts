@@ -316,18 +316,26 @@ export type InvoiceResponse = {
 export type WebhookTransactionSnapshot = {
   transactionId: string;
   reference: string;
-  /** Decimal-string amount (matches backend wire JSON). */
-  amount: string;
-  currency: string;
+  /**
+   * Decimal-string amount (matches backend wire JSON). Null in the rare case
+   * where the backend could not read the transaction record while dispatching;
+   * `transactionId` and `status` are always present, so reconcile with
+   * `getStatus()` if you see one.
+   */
+  amount: string | null;
+  currency: string | null;
   status: TransactionStatus;
   previousStatus: TransactionStatus;
-  type: TransactionType;
-  method: PaymentMethod;
-  mode: TransactionMode;
+  /**
+   * These three are `null` whenever the backend has no value stored for the
+   * transaction (older rows especially) — it sends the key with an explicit
+   * null rather than omitting it.
+   */
+  type: TransactionType | null;
+  method: PaymentMethod | null;
+  mode: TransactionMode | null;
   failureReason: string | null;
   operatorTid: string | null;
-  /** Humanized status description (e.g., for `on_hold` reviews). */
-  statusText?: string;
 };
 
 /**

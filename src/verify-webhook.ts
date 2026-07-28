@@ -10,11 +10,16 @@ import type { VerifyWebhookInput } from "./types";
 /** Default replay-protection window: the signed timestamp must be this fresh. */
 const DEFAULT_TOLERANCE_SECONDS = 300;
 
-/** Decode the (already signature-verified) payload to a UTF-8 string. */
-function decodePayload(payload: string | Uint8Array): string {
+/**
+ * Raw bytes to sign. A Uint8Array is used as-is rather than round-tripped
+ * through a string: decoding and re-encoding would silently rewrite any byte
+ * sequence that is not valid UTF-8, producing a signature mismatch on a
+ * payload that was in fact authentic.
+ */
+function toPayloadBytes(payload: string | Uint8Array): Buffer {
   return typeof payload === "string"
-    ? payload
-    : Buffer.from(payload).toString("utf8");
+    ? Buffer.from(payload, "utf8")
+    : Buffer.from(payload);
 }
 
 /**
@@ -44,6 +49,14 @@ function extractSignedTimestampMs(payloadString: string): number | null {
   }
 
   if (typeof raw === "string") {
+    // Numeric string first (e.g. "1718976000") — accepted so this SDK and the
+    // Python one agree on every timestamp shape. Date.parse would read such a
+    // string as a year, so it has to be handled before the ISO branch.
+    const numeric = Number(raw);
+    if (raw.trim() !== "" && Number.isFinite(numeric)) {
+      return numeric < 1e12 ? numeric * 1000 : numeric;
+    }
+
     const ms = Date.parse(raw);
     return Number.isNaN(ms) ? null : ms;
   }
@@ -68,12 +81,19 @@ function extractSignedTimestampMs(payloadString: string): number | null {
  */
 export function verifyWebhookSignature(input: VerifyWebhookInput): boolean {
   try {
-    const payloadString = decodePayload(input.payload);
-    const payloadBytes = Buffer.from(payloadString, "utf8");
+    const payloadBytes = toPayloadBytes(input.payload);
 
     const expectedSignature = createHmac("sha256", input.secret)
       .update(payloadBytes)
       .digest("hex");
+
+    // One canonical signature: lowercase hex, byte-for-byte what Nylon Pay
+    // sends in `x-nylon-signature`. Comparing decoded bytes alone would also
+    // accept uppercase hex — the same value spelled a second way — so the
+    // canonical form is enforced explicitly, matching the Python SDK.
+    if (input.signature !== input.signature.toLowerCase()) {
+      return false;
+    }
 
     const providedBuffer = Buffer.from(input.signature, "hex");
     const expectedBuffer = Buffer.from(expectedSignature, "hex");
@@ -96,7 +116,11 @@ export function verifyWebhookSignature(input: VerifyWebhookInput): boolean {
       return false;
     }
 
-    const timestampMs = extractSignedTimestampMs(payloadString);
+    // Decoding for the timestamp read is safe here: the bytes are already
+    // proven authentic, and a body that is not UTF-8 JSON simply yields null.
+    const timestampMs = extractSignedTimestampMs(
+      payloadBytes.toString("utf8")
+    );
     if (timestampMs === null) {
       // Fail closed: a valid signature with no verifiable timestamp cannot be
       // proven fresh, so it cannot be distinguished from a replay.
