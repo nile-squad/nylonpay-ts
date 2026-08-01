@@ -2,7 +2,7 @@
 
 Server-side SDK for integrating Nylon Pay into merchant applications. Supports TypeScript and JavaScript (ESM and CJS).
 
-This package is the reference implementation of the [Nylon Pay SDK Spec](https://github.com/nile-squad/specs/blob/main/nylonpay-sdk-spec/spec.md) — the canonical, language-agnostic contract for building Nylon Pay SDKs in any language.
+This package is the reference implementation of the [Nylon Pay SDK Spec](https://github.com/nile-squad/specs/blob/main/nylonpay-sdk-spec/spec.md), the canonical, language-agnostic contract for building Nylon Pay SDKs in any language.
 
 [Full documentation](https://docs.nylonpay.nilesquad.com/docs)
 
@@ -35,7 +35,7 @@ payment.on("failed", ({ error }) => notifyCustomer(error));
 
 ## Configuration
 
-Use your test keys to work in sandbox, or your production keys to go live. There is no separate `environment` option — the key determines the mode.
+Use your test keys to work in sandbox, or your production keys to go live. There is no separate `environment` option, the key determines the mode.
 
 | Option | Required | Default | Description |
 |---|---|---|---|
@@ -62,7 +62,7 @@ const payment = await nylonpay.collectPayment({
   customer: { name: "Jane", phoneNumber: "+256700000000" },
   description: "Order #1234",
   method: "mobileMoney",
-  reference: "ORDER-2026-001",
+  reference: "550e8400-e29b-41d4-a716-446655440000",
 });
 
 payment.on("success", ({ transaction }) => { /* ... */ });
@@ -70,8 +70,8 @@ payment.on("failed", ({ error }) => { /* ... */ });
 ```
 
 `reference` is optional and auto-generated if omitted. A supplied reference must be
-**13 to 15 characters**; the SDK throws a `validation` error otherwise. A raw UUID is
-36 characters and will be rejected, so use a short id of your own or omit the field.
+a valid UUID (any version); the SDK throws a `validation` error otherwise. Omit the
+field to auto-generate a UUID v4.
 
 ### collectPaymentAndResolve
 
@@ -122,19 +122,19 @@ const result = await nylonpay.makePayoutAndResolve({
 
 `makePayout` returns immediately with a `reference` for tracking and idempotent retries. The payout status flows through several stages:
 
-- **`pending`** — Payout accepted and queued for processing
-- **`processing`** — Provider is actively handling the disbursement
-- **`on_hold`** — Payout is under review (liquidity or compliance checks). Non-terminal; will complete to `successful`, `failed`, or `cancelled`.
-- **`successful`** — Payout completed; funds sent to destination
-- **`failed`** — Payout failed; funds refunded to merchant account
-- **`cancelled`** — Payout was cancelled by the merchant
+- **`pending`**, Payout accepted and queued for processing
+- **`processing`**, Provider is actively handling the disbursement
+- **`on_hold`**, Payout is under review (liquidity or compliance checks). Non-terminal; will complete to `successful`, `failed`, or `cancelled`.
+- **`successful`**, Payout completed; funds sent to destination
+- **`failed`**, Payout failed; funds refunded to merchant account
+- **`cancelled`**, Payout was cancelled by the merchant
 
 **Polling and webhooks:** Monitor payout progress by:
 1. Subscribing to `"processing"` events (covers `pending`, `processing`, and `on_hold` states)
 2. Listening for terminal events: `"success"`, `"failed"`, `"cancelled"`
 3. Receiving webhook notifications at your configured endpoint
 
-The SDK treats `on_hold` as a non-terminal status — polling continues automatically until the payout reaches a terminal state. Use the `statusText` field for human-readable details about review holds.
+The SDK treats `on_hold` as a non-terminal status, polling continues automatically until the payout reaches a terminal state. Use the `statusText` field for human-readable details about review holds.
 
 ```ts
 const payout = await nylonpay.makePayout({ /* ... */ });
@@ -163,7 +163,7 @@ if (tx) {
 One-shot status check for a transaction. Does not poll, returns the current server-side state.
 
 ```ts
-const result = await nylonpay.getStatus({ reference: "ORDER-2026-001" });
+const result = await nylonpay.getStatus({ reference: "550e8400-e29b-41d4-a716-446655440000" });
 if (result.isOk) console.log(result.value.status);
 ```
 
@@ -172,7 +172,7 @@ if (result.isOk) console.log(result.value.status);
 Look up a full transaction record by `id` or `reference`. At least one must be provided.
 
 ```ts
-const result = await nylonpay.getTransaction({ reference: "ORDER-2026-001" });
+const result = await nylonpay.getTransaction({ reference: "550e8400-e29b-41d4-a716-446655440000" });
 if (result.isOk) console.log(result.value.failureReason);
 ```
 
@@ -252,7 +252,7 @@ const nylonpay = createNylonPay({
 
 const tx = await nylonpay.collectPaymentAndResolve({ /* ... */ });
 if (tx.isOk && tx.value.delayed && tx.value.status === "pending") {
-  // Payment still in flight — listen for webhooks
+  // Payment still in flight, listen for webhooks
 }
 ```
 
@@ -273,12 +273,12 @@ if (result.isOk) {
 
 ## Error Handling
 
-All operations return `Result<T, string>` from [slang-ts](https://github.com/nile-squad/slang-ts). Use `parseError` to get structured error objects.
+All operations return `Result<T, string>` from [slang-ts](https://github.com/Hussseinkizz/slang-ts). Use `parseError` to get structured error objects.
 
 ```ts
 import { parseError } from "@nile-squad/nylonpay-ts";
 
-const result = await nylonpay.getStatus({ reference: "ORDER-2026-001" });
+const result = await nylonpay.getStatus({ reference: "550e8400-e29b-41d4-a716-446655440000" });
 if (!result.isOk) {
   const error = parseError(result.error);
   if (error.retryable) {
