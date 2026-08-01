@@ -9,6 +9,8 @@ import {
 
 const RUN_AMOUNT = 1000 + (Date.now() % 8000);
 const IN_FLIGHT = ["pending", "processing"] as const;
+/** Keeps sandbox poll pending for admin-refresh integration (see sandbox-protocol). */
+const INTEGRATION_LONG_PENDING_DESCRIPTION = "integration-long-pending";
 
 describe("orphan refresh lifecycle (live SDK)", () => {
   it("I20: collectPayment creates a pending collection with no failure reason", async () => {
@@ -87,7 +89,7 @@ describe.skipIf(!hasAdminCredentials)(
         amount: RUN_AMOUNT + 2,
         currency: "UGX",
         customer: { name: "Orphan Refresh Test", phoneNumber: TEST_PHONE },
-        description: "Admin refresh no-op check",
+        description: INTEGRATION_LONG_PENDING_DESCRIPTION,
         reference,
       });
 
