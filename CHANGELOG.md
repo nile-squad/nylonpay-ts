@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.0.1
+
+Upgrading from 2.0.0. No API or behavior changes, test coverage only.
+
+### Added
+
+- The spec's canonical signing conformance vectors V1–V7 now ship as a unit test
+  (spec requirement S19). This package is the reference implementation, so the
+  vectors were generated here and verified against the backend's verifier;
+  pinning them keeps the reference from drifting away from the document the
+  other SDKs are built against.
+
 ## 2.0.0
 
 Upgrading from 1.5.0, the previously published release. (1.6.0 was prepared but
