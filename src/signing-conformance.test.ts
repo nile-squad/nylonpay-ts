@@ -2,12 +2,12 @@ import { describe, expect, it } from "vitest";
 import { createCanonicalPayload, createSignature } from "./signature";
 
 /**
- * Signing conformance — the spec's canonical vectors V1–V7 (requirement S19).
+ * Signing conformance, the spec's canonical vectors V1–V7 (requirement S19).
  *
  * These are the conformance vectors published in the Nylon Pay SDK Spec
  * (transport.md, "Conformance vectors"). This package is the reference
  * implementation, so the vectors were generated here and verified against the
- * backend's own `verifySignature` — pinning them keeps the reference from
+ * backend's verifier, pinning them keeps the reference from
  * drifting away from the document every other SDK is built against.
  *
  * Payloads are held as verbatim JSON text from the spec and parsed at test
