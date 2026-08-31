@@ -21,7 +21,10 @@ describe("orphan refresh lifecycle (live SDK)", () => {
       amount: RUN_AMOUNT,
       currency: "UGX",
       customer: { name: "Orphan Refresh Test", phoneNumber: TEST_PHONE },
-      description: "Orphan refresh integration",
+      // Without this, the sandbox provider resolves fast at random (its normal
+      // behavior) and this assertion races it — flaking whenever it resolves
+      // to "successful" before the read below. Pin it pending like I22 does.
+      description: INTEGRATION_LONG_PENDING_DESCRIPTION,
       reference,
     });
 
