@@ -4,8 +4,8 @@
  *
  * Signature payload format: fingerprint.nonce.timestamp.canonicalPayload
  *
- * @see backend/src/services/sdk/verify-signature.ts
- * @see Spec 2 section 1 - "creates a signature using these values and the api secret (HMAC 256)"
+ * @see Nylon Pay SDK Spec, Transport Contract, "Request Signing"
+ *      https://github.com/nile-squad/specs
  */
 
 import { createHmac } from "node:crypto";
@@ -20,7 +20,7 @@ import { createHmac } from "node:crypto";
  * the same payload to different bytes and fail signature verification on valid
  * traffic. Must match backend's createCanonicalPayload function byte-for-byte.
  *
- * @see backend/src/services/sdk/create-canonical-payload.ts
+ * @see Nylon Pay SDK Spec, Transport Contract, "Canonical payload (JCS)"
  */
 /** Compare two keys by UTF-16 code unit (RFC 8785), never by locale. */
 function compareByCodePoint(first: string, second: string): number {
@@ -71,7 +71,7 @@ export function createCanonicalPayload(payload: unknown): string {
  * The fingerprint is included in the signature to prevent tampering
  * with server identity information.
  *
- * @see backend/src/services/sdk/verify-signature.ts:createSignaturePayload
+ * @see Nylon Pay SDK Spec, Transport Contract, "What exactly is signed"
  */
 export function createSignaturePayload(input: {
   fingerprint: string;

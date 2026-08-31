@@ -4,7 +4,7 @@
  * Every Nylon Pay SDK implementation MUST cover these behaviors. They are the
  * cross-language contract for the SDK's cryptographic surface: request signing,
  * response/webhook verification, nonce entropy, and fail-closed verification.
- * IDs (S1…) are traceable to `packages/specs/nylonpay-sdk-spec/`.
+ * IDs (S1…) are traceable to the Nylon Pay SDK Spec (https://github.com/nile-squad/specs).
  */
 
 import { createHmac } from "node:crypto";
