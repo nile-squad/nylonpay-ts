@@ -137,6 +137,13 @@ export type CollectPaymentInput = {
    * team, or any merchant-defined dimension.
    */
   tags?: string[];
+  /**
+   * Sandbox-only forced outcome: `"success"` always succeeds, `"fail"` always
+   * fails — so integration tests can walk both paths on demand. Omit for the
+   * default random sandbox behavior. Rejected with a validation error when
+   * used with a live key.
+   */
+  testOutcome?: "success" | "fail";
 };
 
 /**
@@ -153,6 +160,13 @@ export type MakePayoutInput = {
   metadata?: Record<string, string>;
   /** Business labels — same normalization rules as {@link CollectPaymentInput.tags}. */
   tags?: string[];
+  /**
+   * Sandbox-only forced outcome: `"success"` always succeeds, `"fail"` always
+   * fails — so integration tests can walk both paths on demand. Omit for the
+   * default random sandbox behavior. Rejected with a validation error when
+   * used with a live key.
+   */
+  testOutcome?: "success" | "fail";
 };
 
 /**

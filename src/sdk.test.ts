@@ -1471,4 +1471,97 @@ describe("createNylonPay", () => {
       }
     });
   });
+
+  describe("testOutcome (sandbox forced outcome)", () => {
+    const collectBase = {
+      amount: 1000,
+      currency: "UGX" as const,
+      customer: { name: "Test", phoneNumber: "+256700000000" },
+      description: "Test payment",
+    };
+    const payoutBase = {
+      amount: 5000,
+      currency: "UGX" as const,
+      customer: { name: "Test", phoneNumber: "+256700000000" },
+      destination: { accountHolderName: "Test", accountNumber: "123456" },
+      description: "Test payout",
+    };
+
+    function testSdk() {
+      return createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+      });
+    }
+
+    it("collectPayment forwards testOutcome fail on the wire", async () => {
+      mockSend.mockResolvedValue(
+        Ok({ reference: "test-ref", status: "pending" }),
+      );
+
+      await testSdk().collectPayment({ ...collectBase, testOutcome: "fail" });
+
+      const request = mockSend.mock.calls[0][0];
+      expect(request.payload.testOutcome).toBe("fail");
+    });
+
+    it("collectPaymentAndResolve forwards testOutcome success on the wire", async () => {
+      mockSend.mockResolvedValue(Ok(mockTransaction));
+
+      await testSdk().collectPaymentAndResolve({
+        ...collectBase,
+        testOutcome: "success",
+      });
+
+      const request = mockSend.mock.calls[0][0];
+      expect(request.payload.testOutcome).toBe("success");
+    });
+
+    it("makePayout and makePayoutAndResolve forward testOutcome on the wire", async () => {
+      mockSend.mockResolvedValue(
+        Ok({ reference: "test-ref", status: "pending" }),
+      );
+
+      await testSdk().makePayout({ ...payoutBase, testOutcome: "fail" });
+      expect(mockSend.mock.calls[0][0].payload.testOutcome).toBe("fail");
+
+      mockSend.mockClear();
+      mockSend.mockResolvedValue(Ok({ ...mockTransaction, type: "payout" }));
+      await testSdk().makePayoutAndResolve({
+        ...payoutBase,
+        testOutcome: "success",
+      });
+      expect(mockSend.mock.calls[0][0].payload.testOutcome).toBe("success");
+    });
+
+    it("omitted testOutcome is absent from the wire payload", async () => {
+      mockSend.mockResolvedValue(
+        Ok({ reference: "test-ref", status: "pending" }),
+      );
+
+      await testSdk().collectPayment(collectBase);
+
+      const request = mockSend.mock.calls[0][0];
+      expect("testOutcome" in request.payload).toBe(false);
+    });
+
+    it("invalid testOutcome throws a validation error before any network call", async () => {
+      const sdk = testSdk();
+
+      await expect(
+        sdk.collectPayment({
+          ...collectBase,
+          testOutcome: "sometimes" as unknown as "fail",
+        }),
+      ).rejects.toThrow('testOutcome must be "success" or "fail"');
+      await expect(
+        sdk.makePayout({
+          ...payoutBase,
+          testOutcome: "sometimes" as unknown as "fail",
+        }),
+      ).rejects.toThrow('testOutcome must be "success" or "fail"');
+      expect(mockSend).not.toHaveBeenCalled();
+    });
+  });
 });

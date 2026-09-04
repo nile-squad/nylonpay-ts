@@ -122,6 +122,24 @@ function validatePayoutAmount(amount: number): void {
   }
 }
 
+/**
+ * Validate the sandbox-only forced outcome. The type already constrains
+ * merchants in TypeScript; this runtime check protects plain-JS callers and
+ * `before*` hook mutations (which re-run validation via
+ * {@link applyBeforeHookMutation}).
+ */
+function validateTestOutcome(
+  testOutcome: "success" | "fail" | undefined,
+): void {
+  if (
+    testOutcome !== undefined &&
+    testOutcome !== "success" &&
+    testOutcome !== "fail"
+  ) {
+    throwValidation('testOutcome must be "success" or "fail"');
+  }
+}
+
 /** Validate that a string value is non-empty. */
 function validateNonEmpty(value: string, fieldName: string): void {
   if (!value || value.trim() === "") {
@@ -154,6 +172,7 @@ function prepareCollectPayload(
 ): CollectPaymentInput & { reference: string } {
   const reference = resolveReference(input.reference);
   validateCollectionAmount(input.amount);
+  validateTestOutcome(input.testOutcome);
   validateNonEmpty(input.customer.name, "customer.name");
   validateNonEmpty(input.customer.phoneNumber, "customer.phoneNumber");
   const normalizedPhone = normalizePhone(input.customer.phoneNumber);
@@ -180,6 +199,7 @@ function preparePayoutPayload(
 ): MakePayoutInput & { reference: string } {
   const reference = resolveReference(input.reference);
   validatePayoutAmount(input.amount);
+  validateTestOutcome(input.testOutcome);
   validateNonEmpty(input.customer.name, "customer.name");
   validateNonEmpty(input.customer.phoneNumber, "customer.phoneNumber");
   const normalizedPhone = normalizePhone(input.customer.phoneNumber);
