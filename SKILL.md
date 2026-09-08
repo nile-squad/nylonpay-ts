@@ -32,6 +32,11 @@ const nylonpay = createNylonPay({
 - Test vs live mode comes from the **key**, not a config flag. Use your sandbox
   key for test transactions and your live key for real money. There is no
   `environment` option.
+- With a sandbox key, pass `testOutcome: "success"` or `testOutcome: "fail"` on
+  `collectPayment`, `collectPaymentAndResolve`, `makePayout` or
+  `makePayoutAndResolve` to force the result. Omit it and the sandbox decides at
+  random, which makes a test that expects one outcome flaky. Any other value
+  throws a `validation` error, and so does using it with a live key.
 - Amounts are integers in the currency's smallest tracked unit (for example `10000`).
 - Supported currencies: `USD`, `EUR`, `GBP`, `KES`, `UGX`, `TZS`, `RWF`.
 
