@@ -48,7 +48,12 @@ describe("orphan refresh lifecycle (live SDK)", () => {
       amount: RUN_AMOUNT + 1,
       currency: "UGX",
       customer: { name: "Orphan Refresh Test", phoneNumber: TEST_PHONE },
-      description: "Status parity check",
+      // Pinned pending for the same reason I20 pins it: the sandbox resolves on
+      // a random 800-2500ms delay, so an unpinned transaction can flip between
+      // the two reads below and fail a parity check with nothing wrong. What is
+      // under test is that the two endpoints AGREE, not which status they agree
+      // on, so removing the moving target costs the assertion nothing.
+      description: INTEGRATION_LONG_PENDING_DESCRIPTION,
       reference,
     });
 
