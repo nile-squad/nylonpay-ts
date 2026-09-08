@@ -30,7 +30,7 @@ describe("generateFingerprint", () => {
           `arch:${arch()}`,
           `release:${release()}`,
           `hostname:${hostname()}`,
-        ].join("|")
+        ].join("|"),
       )
       .digest("hex");
 
