@@ -1,19 +1,29 @@
 /**
  * Server fingerprint generation for SDK requests.
- * Provides a stable identifier based on runtime environment.
  *
- * @see Spec 2 section 1 - "a server fingerprint based on runtime, os, etc"
+ * A stable, opaque identifier for the machine a process is running on. It is
+ * sent as `_fingerprint` in the request body and is the first component of
+ * `signatureInput`, so the value signed and the value sent must be identical.
+ *
+ * The server treats it as opaque: it reads `_fingerprint` out of the body and
+ * feeds that value into its own HMAC. It never recomputes one, so what goes
+ * into the hash is an implementation choice and can change without breaking
+ * older clients, which sign with whatever they sent.
+ *
+ * Only OS-level inputs are used. Runtime and language versions were removed on
+ * 2026-09-08 because they are not something every SDK can obtain the same way,
+ * and they made the value churn on every runtime upgrade for no benefit.
+ *
+ * @see Spec 2 section 1
  */
 
 import { createHash } from "node:crypto";
 import { arch, hostname, platform, release, type } from "node:os";
 
 /**
- * Generate a server fingerprint based on runtime environment.
- * This provides a stable identifier for the server making requests.
- * The fingerprint is a SHA-256 hash of system characteristics.
+ * Generate a server fingerprint from OS metadata.
  *
- * @returns Hex-encoded SHA-256 hash of system info
+ * @returns Hex-encoded SHA-256 hash of system info, 64 lowercase characters
  *
  * @example
  * ```ts
@@ -28,8 +38,6 @@ export function generateFingerprint(): string {
     `arch:${arch()}`,
     `release:${release()}`,
     `hostname:${hostname()}`,
-    `node:${process.versions.node}`,
-    `v8:${process.versions.v8}`,
   ].join("|");
 
   return createHash("sha256").update(components).digest("hex");
