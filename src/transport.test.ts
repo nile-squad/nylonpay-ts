@@ -106,6 +106,10 @@ describe("createTransport", () => {
       expect(headers["x-nylon-timestamp"]).toMatch(/^\d+$/);
       expect(headers["x-nylon-signature"]).toMatch(/^[a-f0-9]{64}$/);
       expect(headers["content-type"]).toBe("application/json");
+      // Opts this client into wire additions the backend withholds from
+      // releases that cannot parse them. Without it the server keeps sending
+      // the older message shape.
+      expect(headers["x-nylon-features"]).toBe("error-code");
     });
   });
 

@@ -7,6 +7,7 @@
 - `getStatus` now returns `id`, `operatorTid`, `failureReason`, `failureCategory`, `failureCode`, `statusText`, and `delayed`.
 - Transaction and webhook snapshots carry Nylon `failureCategory` / `failureCode`. Webhook collections send `type: "collection"` plus `legacyType: "charge"`.
 - `testOutcome` accepts Nylon failure-code literals. `parseError` reads an optional `-- error-code:` suffix.
+- Requests now send `x-nylon-features`, declaring what this client can parse. The backend withholds wire additions from clients that do not list them, so older releases keep receiving the message shape they were built against.
 - `InvoiceResponse.invoiceNumber` may be `null`; `url` is a deprecated alias of `paymentLink`.
 
 ### Changed

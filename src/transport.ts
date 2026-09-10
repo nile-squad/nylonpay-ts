@@ -24,6 +24,18 @@ import { verifyResponseSignature } from "./verify-response";
 /** Cached fingerprint for this server instance. */
 const CACHED_FINGERPRINT = generateFingerprint();
 
+/**
+ * Wire features this SDK understands, sent on every request.
+ *
+ * `error-code` says `parseError` can read the optional ` -- error-code: <code>`
+ * tail. Every release before this one parsed the category with a regex anchored
+ * at the end of the message, so a code appended after it left them with no
+ * match — category silently downgraded to `internal`, and the raw suffixes
+ * shown to the user as part of the message. The backend only appends a code for
+ * clients listed here.
+ */
+const CLIENT_FEATURES = ["error-code"] as const;
+
 /** Known failure categories the server tags onto error messages. */
 const KNOWN_CATEGORIES = new Set<SdkErrorCategory>([
   "auth",
@@ -211,6 +223,11 @@ function buildAuthHeaders({
 
   return {
     "content-type": "application/json",
+    // Declares what this client can parse. The backend withholds anything not
+    // listed here, so a version that predates a wire addition keeps receiving
+    // the shape it was written against. Not covered by the signature (which is
+    // fingerprint + nonce + timestamp + payload), so it is free to change.
+    "x-nylon-features": CLIENT_FEATURES.join(","),
     "x-nylon-key": apiKey,
     "x-nylon-nonce": nonce,
     "x-nylon-signature": signature,
