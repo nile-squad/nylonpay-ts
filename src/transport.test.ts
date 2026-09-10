@@ -424,6 +424,15 @@ describe("parseError", () => {
     expect(error.message).toBe("Transaction not found");
   });
 
+  it("extracts an optional error-code suffix", () => {
+    const error = parseError(
+      "The payout could not start -- error-type: account -- error-code: payout_gate",
+    );
+    expect(error.category).toBe("account");
+    expect(error.code).toBe("payout_gate");
+    expect(error.message).toBe("The payout could not start");
+  });
+
   it("parses the duplicate category for reused references", () => {
     const error = parseError(
       "Duplicate reference — a transaction with this reference already exists. References must be unique per transaction: retry with a new reference, or fetch the existing transaction by reference instead. -- error-type: duplicate",

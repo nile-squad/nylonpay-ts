@@ -45,8 +45,9 @@ const STATUS_CATEGORY: Record<number, SdkErrorCategory> = {
   429: "rate_limit",
 };
 
-/** Matches the server's ` -- error-type: <category>` message suffix. */
-const ERROR_TYPE_SUFFIX = /^(.*?)\s*--\s*error-type:\s*([a-z_]+)\s*$/is;
+/** Matches ` -- error-type: <category>` plus optional ` -- error-code: <code>`. */
+const ERROR_TYPE_SUFFIX =
+  /^(.*?)\s*--\s*error-type:\s*([a-z_]+)(?:\s*--\s*error-code:\s*([a-z0-9_]+))?\s*$/is;
 
 /**
  * Split the server's tagged category off an error message. The backend appends
@@ -56,12 +57,14 @@ const ERROR_TYPE_SUFFIX = /^(.*?)\s*--\s*error-type:\s*([a-z_]+)\s*$/is;
  */
 function parseCategoryFromMessage(message: string): {
   category: SdkErrorCategory | null;
+  code?: string;
   message: string;
 } {
   const match = ERROR_TYPE_SUFFIX.exec(message);
   if (match?.[2] && KNOWN_CATEGORIES.has(match[2] as SdkErrorCategory)) {
     return {
       category: match[2] as SdkErrorCategory,
+      ...(match[3] ? { code: match[3] } : {}),
       message: match[1] ?? message,
     };
   }
@@ -82,6 +85,7 @@ function buildHttpError(params: {
     category,
     message: parsed.message,
     retryable: RETRYABLE_STATUS_CODES.has(params.statusCode),
+    ...(parsed.code ? { code: parsed.code } : {}),
   };
 }
 
@@ -483,5 +487,6 @@ export function parseError(error: string): SdkError {
   return {
     category: fromSuffix.category ?? "internal",
     message: fromSuffix.message,
+    ...(fromSuffix.code ? { code: fromSuffix.code } : {}),
   };
 }

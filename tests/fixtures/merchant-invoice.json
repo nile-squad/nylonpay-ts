@@ -1,0 +1,9 @@
+{
+  "id": "link-1",
+  "invoiceNumber": null,
+  "paymentLink": "https://app.example/pay?token=abc",
+  "url": "https://app.example/pay?token=abc",
+  "amount": "5000",
+  "currency": "UGX",
+  "status": "pending"
+}

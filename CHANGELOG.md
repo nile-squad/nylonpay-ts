@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- `getStatus` now returns `id`, `operatorTid`, `failureReason`, `failureCategory`, `failureCode`, `statusText`, and `delayed`.
+- Transaction and webhook snapshots carry Nylon `failureCategory` / `failureCode`. Webhook collections send `type: "collection"` plus `legacyType: "charge"`.
+- `testOutcome` accepts Nylon failure-code literals. `parseError` reads an optional `-- error-code:` suffix.
+- `InvoiceResponse.invoiceNumber` may be `null`; `url` is a deprecated alias of `paymentLink`.
+
+### Changed
+
+- `wait()` `onDelayed: "return"` now fires when the backend marks a pending payment delayed (default remains `"wait"`).
+
 ## 2.0.1
 
 Upgrading from 2.0.0. No API or behavior changes, test coverage only.

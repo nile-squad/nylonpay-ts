@@ -47,6 +47,25 @@ export type TransactionMode = "test" | "live";
 /** Merchant choice when a payment is flagged delayed but still pending. */
 export type OnDelayedBehavior = "wait" | "return";
 
+/** Nylon-owned transaction failure category after we resolve the outcome. */
+export type FailureCategory = "provider" | "customer" | "internal" | "validation";
+
+/** Nylon-owned transaction failure code. Never a provider enum. */
+export type FailureCode =
+  | "provider_rejection"
+  | "customer_timeout"
+  | "insufficient_balance"
+  | "invalid_number"
+  | "internal_error"
+  | "limit_exceeded"
+  | "cancelled";
+
+/**
+ * Sandbox-only forced outcome. `"success"` / `"fail"` keep the original
+ * behaviour; the Nylon failure-code literals force that labelled fail.
+ */
+export type SandboxTestOutcome = "success" | "fail" | FailureCode;
+
 /**
  * Events emitted by a PaymentInstance as a transaction progresses.
  * Merchants subscribe to these to react to status changes without
@@ -143,7 +162,7 @@ export type CollectPaymentInput = {
    * default random sandbox behavior. Rejected with a validation error when
    * used with a live key.
    */
-  testOutcome?: "success" | "fail";
+  testOutcome?: SandboxTestOutcome;
 };
 
 /**
@@ -166,7 +185,7 @@ export type MakePayoutInput = {
    * default random sandbox behavior. Rejected with a validation error when
    * used with a live key.
    */
-  testOutcome?: "success" | "fail";
+  testOutcome?: SandboxTestOutcome;
 };
 
 /**
@@ -262,6 +281,8 @@ export type Transaction = {
   phone: string;
   email: string | null;
   failureReason: string | null;
+  failureCategory?: FailureCategory | null;
+  failureCode?: FailureCode | null;
   /**
    * Humanized status description. For `on_hold` statuses, this provides
    * a plain-language explanation (e.g., "Payout is being reviewed and will
@@ -286,6 +307,11 @@ export type StatusResponse = {
   status: TransactionStatus;
   amount: number;
   currency: Currency;
+  id: string;
+  operatorTid: string | null;
+  failureReason: string | null;
+  failureCategory?: FailureCategory | null;
+  failureCode?: FailureCode | null;
   /**
    * Humanized status description. For `on_hold` statuses, this provides
    * a plain-language explanation (e.g., "Payout is being reviewed and will
@@ -315,9 +341,12 @@ export type PhoneVerification = {
  */
 export type InvoiceResponse = {
   id: string;
-  invoiceNumber: string;
+  /** Hosted payment links do not mint an invoice number today. */
+  invoiceNumber: string | null;
   /** Direct payment URL — share this with the customer. */
   paymentLink: string;
+  /** Deprecated alias of `paymentLink` — kept this window. */
+  url?: string;
   amount: string;
   currency: string;
   /** `"issued"` when created. Transitions to `"paid"` once the customer pays. */
@@ -352,6 +381,14 @@ export type WebhookTransactionSnapshot = {
   method: PaymentMethod | null;
   mode: TransactionMode | null;
   failureReason: string | null;
+  failureCategory?: FailureCategory | null;
+  failureCode?: FailureCode | null;
+  /**
+   * Present only while we deprecate the DB word `charge` on collections.
+   * Read `type` (`collection`) going forward; match `legacyType` if your
+   * handler still keys off `charge`.
+   */
+  legacyType?: "charge";
   operatorTid: string | null;
 };
 
@@ -535,6 +572,8 @@ export type SdkError = {
   category: SdkErrorCategory;
   message: string;
   retryable?: boolean;
+  /** Optional Nylon code riding the same message suffix as `category`. */
+  code?: string;
 };
 
 /**

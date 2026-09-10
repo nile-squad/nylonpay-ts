@@ -1,0 +1,21 @@
+{
+  "id": "txn-1",
+  "reference": "REF-1",
+  "amount": 1500,
+  "currency": "UGX",
+  "status": "failed",
+  "type": "collection",
+  "method": "mobileMoney",
+  "description": "Order #1",
+  "operatorTid": "TEST_AABBCCDD",
+  "phone": "+256700000000",
+  "email": "a@b.com",
+  "failureReason": "The wallet did not have enough money to complete this payment.",
+  "failureCategory": "provider",
+  "failureCode": "insufficient_balance",
+  "statusText": "The wallet did not have enough money to complete this payment.",
+  "metadata": { "orderId": "ORD-1" },
+  "mode": "test",
+  "createdAt": "2026-06-06T00:00:00.000Z",
+  "updatedAt": "2026-06-06T00:01:00.000Z"
+}

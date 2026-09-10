@@ -1,0 +1,16 @@
+{
+  "transactionId": "txn-1",
+  "reference": "REF-1",
+  "amount": "1500",
+  "currency": "UGX",
+  "status": "failed",
+  "previousStatus": "processing",
+  "type": "collection",
+  "legacyType": "charge",
+  "method": "mobileMoney",
+  "mode": "test",
+  "failureReason": "The wallet did not have enough money to complete this payment.",
+  "failureCategory": "provider",
+  "failureCode": "insufficient_balance",
+  "operatorTid": "TEST_AABBCCDD"
+}
