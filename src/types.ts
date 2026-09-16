@@ -93,7 +93,15 @@ export type WebhookEventType =
  * Currencies supported by the platform. Merchants should use the currency
  * matching their settlement account to avoid FX surprises.
  */
-export type Currency = "USD" | "EUR" | "GBP" | "KES" | "UGX" | "TZS" | "RWF";
+export type Currency =
+  | "USD"
+  | "EUR"
+  | "GBP"
+  | "KES"
+  | "UGX"
+  | "TZS"
+  | "RWF"
+  | "CDF";
 
 /**
  * Customer details attached to a payment. The phone number is the primary
