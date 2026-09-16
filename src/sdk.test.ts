@@ -779,6 +779,27 @@ describe("createNylonPay", () => {
       ).rejects.toThrow("Collection amount must be at least 500 UGX");
     });
 
+    it("collectPayment accepts a Kenya amount below the Uganda 500 floor", async () => {
+      mockSend.mockResolvedValue(
+        Ok({ reference: "test-ref", status: "pending" }),
+      );
+
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+      });
+
+      await sdk.collectPayment({
+        amount: 10,
+        currency: "KES",
+        customer: { name: "Test", phoneNumber: "+254710000000" },
+        description: "Test",
+      });
+
+      expect(mockSend).toHaveBeenCalled();
+    });
+
     it("collectPayment accepts amount = 500", async () => {
       mockSend.mockResolvedValue(
         Ok({ reference: "test-ref", status: "pending" }),

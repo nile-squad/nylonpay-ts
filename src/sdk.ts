@@ -102,24 +102,30 @@ function throwValidation(message: string): never {
   throw createSdkError({ category: "validation", message });
 }
 
-/** Validate collection amount is a positive integer >= 500. */
-function validateCollectionAmount(amount: number): void {
+/** Validate collection amount is a positive integer. Uganda keeps 500. */
+function validateCollectionAmount(amount: number, currency = "UGX"): void {
   if (!Number.isInteger(amount) || amount <= 0) {
     throwValidation("amount must be a positive integer");
   }
-  if (amount < 500) {
+  if (!hasNoNylonFloor(currency) && amount < 500) {
     throwValidation("Collection amount must be at least 500 UGX");
   }
 }
 
-/** Validate payout amount is a positive integer >= 5000. */
-function validatePayoutAmount(amount: number): void {
+/** Validate payout amount is a positive integer. Uganda keeps 5000. */
+function validatePayoutAmount(amount: number, currency = "UGX"): void {
   if (!Number.isInteger(amount) || amount <= 0) {
     throwValidation("amount must be a positive integer");
   }
-  if (amount < 5000) {
+  if (!hasNoNylonFloor(currency) && amount < 5000) {
     throwValidation("Payout amount must be at least 5000 UGX");
   }
+}
+
+const NO_NYLON_FLOOR = new Set(["CDF", "KES", "RWF", "TZS"]);
+
+function hasNoNylonFloor(currency: string): boolean {
+  return NO_NYLON_FLOOR.has(currency.toUpperCase());
 }
 
 /**
@@ -171,11 +177,14 @@ function prepareCollectPayload(
   input: CollectPaymentInput,
 ): CollectPaymentInput & { reference: string } {
   const reference = resolveReference(input.reference);
-  validateCollectionAmount(input.amount);
+  validateCollectionAmount(input.amount, input.currency);
   validateTestOutcome(input.testOutcome);
   validateNonEmpty(input.customer.name, "customer.name");
   validateNonEmpty(input.customer.phoneNumber, "customer.phoneNumber");
-  const normalizedPhone = normalizePhone(input.customer.phoneNumber);
+  const normalizedPhone = normalizePhone(
+    input.customer.phoneNumber,
+    input.currency,
+  );
   validatePhoneFormat(normalizedPhone, "customer.phoneNumber");
   validateNonEmpty(input.description, "description");
   if (input.method === "bank" && !input.bank) {
@@ -198,11 +207,14 @@ function preparePayoutPayload(
   input: MakePayoutInput,
 ): MakePayoutInput & { reference: string } {
   const reference = resolveReference(input.reference);
-  validatePayoutAmount(input.amount);
+  validatePayoutAmount(input.amount, input.currency);
   validateTestOutcome(input.testOutcome);
   validateNonEmpty(input.customer.name, "customer.name");
   validateNonEmpty(input.customer.phoneNumber, "customer.phoneNumber");
-  const normalizedPhone = normalizePhone(input.customer.phoneNumber);
+  const normalizedPhone = normalizePhone(
+    input.customer.phoneNumber,
+    input.currency,
+  );
   validatePhoneFormat(normalizedPhone, "customer.phoneNumber");
   validateNonEmpty(input.description, "description");
   validateNonEmpty(
@@ -518,7 +530,7 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
   async function createInvoice(
     input: CreateInvoiceInput,
   ): Promise<Result<InvoiceResponse, string>> {
-    validateCollectionAmount(input.amount);
+    validateCollectionAmount(input.amount, input.currency);
     validateNonEmpty(input.customerEmail, "customerEmail");
 
     if (input.items) {

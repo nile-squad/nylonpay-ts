@@ -25,4 +25,12 @@ describe("normalizePhone", () => {
   it("converts another local 10-digit number", () => {
     expect(normalizePhone("0700000000")).toBe("256700000000");
   });
+
+  it("gives a Kenya local number the 254 dial code when currency is KES", () => {
+    expect(normalizePhone("0710000000", "KES")).toBe("254710000000");
+  });
+
+  it("leaves an international Kenya number unchanged", () => {
+    expect(normalizePhone("+254710000000", "KES")).toBe("254710000000");
+  });
 });
