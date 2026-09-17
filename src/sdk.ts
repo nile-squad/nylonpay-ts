@@ -23,6 +23,9 @@ import type {
   NylonPaySdk,
   PaymentInstance,
   PhoneVerification,
+  PayBillInput,
+  BuyAirtimeInput,
+  UtilityPaymentResponse,
   SdkHook,
   SdkHooks,
   StatusResponse,
@@ -225,11 +228,18 @@ function preparePayoutPayload(
     input.destination.accountNumber,
     "destination.accountNumber",
   );
+  validateNonEmpty(input.destination.phone, "destination.phone");
+  const destinationPhone = normalizePhone(
+    input.destination.phone,
+    input.currency,
+  );
+  validatePhoneFormat(destinationPhone, "destination.phone");
 
   return {
     ...input,
     reference,
-    customer: { ...input.customer, phoneNumber: normalizedPhone },
+    customer: { ...input.customer, phoneNumber: destinationPhone },
+    destination: { ...input.destination, phone: destinationPhone },
   };
 }
 
@@ -460,6 +470,57 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
   }
 
   /**
+   * Pay a Uganda bill from the merchant wallet.
+   */
+  async function payBill(
+    input: PayBillInput,
+  ): Promise<Result<UtilityPaymentResponse, string>> {
+    validateNonEmpty(input.meterNumber, "meterNumber");
+    validateNonEmpty(input.phone, "phone");
+    const phone = normalizePhone(input.phone);
+    validatePhoneFormat(phone, "phone");
+    if (!Number.isInteger(input.amount) || input.amount <= 0) {
+      throwValidation("amount must be a positive integer");
+    }
+
+    const result = await transport.send<UtilityPaymentResponse>({
+      action: SDK_ACTIONS.payBill,
+      payload: { ...input, phone },
+    });
+    if (result.isOk) {
+      return Ok(result.value);
+    }
+    return Err(result.error);
+  }
+
+  /**
+   * Buy Uganda airtime or a data bundle from the merchant wallet.
+   */
+  async function buyAirtime(
+    input: BuyAirtimeInput,
+  ): Promise<Result<UtilityPaymentResponse, string>> {
+    validateNonEmpty(input.phone, "phone");
+    const phone = normalizePhone(input.phone);
+    validatePhoneFormat(phone, "phone");
+    if (input.purchaseType === "airtime") {
+      if (input.amount == null || !Number.isInteger(input.amount) || input.amount <= 0) {
+        throwValidation("amount must be a positive integer");
+      }
+    } else {
+      validateNonEmpty(input.bundleId, "bundleId");
+    }
+
+    const result = await transport.send<UtilityPaymentResponse>({
+      action: SDK_ACTIONS.buyAirtime,
+      payload: { ...input, phone },
+    });
+    if (result.isOk) {
+      return Ok(result.value);
+    }
+    return Err(result.error);
+  }
+
+  /**
    * Get the current status of a transaction.
    * Lightweight check that returns only status fields.
    */
@@ -600,6 +661,8 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
     collectPaymentAndResolve,
     makePayout,
     makePayoutAndResolve,
+    payBill,
+    buyAirtime,
     getStatus,
     getTransaction,
     listTransactions,

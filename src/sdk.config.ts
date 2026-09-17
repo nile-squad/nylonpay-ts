@@ -35,6 +35,8 @@ export const SDK_ACTIONS = {
   collectPaymentAndResolve: "sdk-collect-payment-and-resolve",
   makePayout: "sdk-make-payout",
   makePayoutAndResolve: "sdk-make-payout-and-resolve",
+  payBill: "sdk-pay-bill",
+  buyAirtime: "sdk-buy-airtime",
   getStatus: "sdk-get-status",
   getTransaction: "sdk-get-transaction",
   listTransactions: "sdk-list-transactions",

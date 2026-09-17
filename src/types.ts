@@ -122,7 +122,7 @@ export type Destination = {
   accountHolderName: string;
   accountNumber: string;
   bankName?: string;
-  phone?: string;
+  phone: string;
 };
 
 /**
@@ -194,6 +194,34 @@ export type MakePayoutInput = {
    * used with a live key.
    */
   testOutcome?: SandboxTestOutcome;
+};
+
+/**
+ * Input for paying a Uganda bill (electricity, water, DStv, GOtv).
+ */
+export type PayBillInput = {
+  amount: number;
+  area?: string;
+  bouquetCode?: string;
+  meterNumber: string;
+  phone: string;
+  utilityCode: "LIGHT" | "NWSC" | "DSTV" | "GOTV";
+};
+
+/**
+ * Input for buying Uganda airtime or a data bundle.
+ */
+export type BuyAirtimeInput = {
+  amount?: number;
+  bundleId?: string;
+  phone: string;
+  purchaseType: "airtime" | "bundle";
+};
+
+export type UtilityPaymentResponse = {
+  reference: string;
+  status: TransactionStatus;
+  transactionId: string;
 };
 
 /**
@@ -814,6 +842,18 @@ export interface NylonPaySdk {
   makePayoutAndResolve(
     input: MakePayoutInput,
   ): Promise<Result<Transaction, string>>;
+
+  /**
+   * Pay a Uganda bill (electricity, water, DStv, or GOtv) from the merchant wallet.
+   */
+  payBill(input: PayBillInput): Promise<Result<UtilityPaymentResponse, string>>;
+
+  /**
+   * Buy Uganda airtime or a data bundle from the merchant wallet.
+   */
+  buyAirtime(
+    input: BuyAirtimeInput,
+  ): Promise<Result<UtilityPaymentResponse, string>>;
 
   /**
    * One-shot status check for a transaction. Does not poll — returns the

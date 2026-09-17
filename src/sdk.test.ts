@@ -252,7 +252,7 @@ describe("createNylonPay", () => {
         amount: 5000,
         currency: "UGX",
         customer: { name: "Test", phoneNumber: "+256700000000" },
-        destination: { accountHolderName: "Test", accountNumber: "1234567890" },
+        destination: { accountHolderName: "Test", accountNumber: "1234567890", phone: "0768499027" },
         description: "Test payout",
       });
 
@@ -273,7 +273,7 @@ describe("createNylonPay", () => {
         amount: 5000,
         currency: "UGX",
         customer: { name: "Test", phoneNumber: "+256700000000" },
-        destination: { accountHolderName: "Test", accountNumber: "1234567890" },
+        destination: { accountHolderName: "Test", accountNumber: "1234567890", phone: "0768499027" },
         description: "Test payout",
       });
 
@@ -281,6 +281,53 @@ describe("createNylonPay", () => {
       if (result.isOk) {
         expect(result.value.type).toBe("payout");
       }
+    });
+
+    it("payBill sends the bill action", async () => {
+      mockSend.mockResolvedValue(
+        Ok({ reference: "bill-ref", status: "successful", transactionId: "txn-bill" }),
+      );
+
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+      });
+
+      const result = await sdk.payBill({
+        amount: 5000,
+        meterNumber: "12345",
+        phone: "+256700000000",
+        utilityCode: "LIGHT",
+      });
+
+      expect(result.isOk).toBe(true);
+      expect(mockSend).toHaveBeenCalledWith(
+        expect.objectContaining({ action: "sdk-pay-bill" }),
+      );
+    });
+
+    it("buyAirtime sends the airtime action", async () => {
+      mockSend.mockResolvedValue(
+        Ok({ reference: "air-ref", status: "successful", transactionId: "txn-air" }),
+      );
+
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+      });
+
+      const result = await sdk.buyAirtime({
+        amount: 1000,
+        phone: "+256700000000",
+        purchaseType: "airtime",
+      });
+
+      expect(result.isOk).toBe(true);
+      expect(mockSend).toHaveBeenCalledWith(
+        expect.objectContaining({ action: "sdk-buy-airtime" }),
+      );
     });
 
     it("getStatus returns StatusResponse", async () => {
@@ -455,7 +502,7 @@ describe("createNylonPay", () => {
         amount: 5000,
         currency: "UGX",
         customer: { name: "Test", phoneNumber: "0768499027" },
-        destination: { accountHolderName: "Test", accountNumber: "1234567890" },
+        destination: { accountHolderName: "Test", accountNumber: "1234567890", phone: "0768499027" },
         description: "Test payout",
       });
 
@@ -477,7 +524,7 @@ describe("createNylonPay", () => {
         amount: 5000,
         currency: "UGX",
         customer: { name: "Test", phoneNumber: "0768499027" },
-        destination: { accountHolderName: "Test", accountNumber: "1234567890" },
+        destination: { accountHolderName: "Test", accountNumber: "1234567890", phone: "0768499027" },
         description: "Test payout",
       });
 
@@ -836,6 +883,7 @@ describe("createNylonPay", () => {
           destination: {
             accountHolderName: "Test",
             accountNumber: "1234567890",
+            phone: "+256700000000",
           },
           description: "Test",
         }),
@@ -857,7 +905,7 @@ describe("createNylonPay", () => {
         amount: 5000,
         currency: "UGX",
         customer: { name: "Test", phoneNumber: "+256700000000" },
-        destination: { accountHolderName: "Test", accountNumber: "1234567890" },
+        destination: { accountHolderName: "Test", accountNumber: "1234567890", phone: "0768499027" },
         description: "Test",
       });
 
@@ -880,7 +928,7 @@ describe("createNylonPay", () => {
         amount: 10000,
         currency: "UGX",
         customer: { name: "Test", phoneNumber: "+256700000000" },
-        destination: { accountHolderName: "Test", accountNumber: "1234567890" },
+        destination: { accountHolderName: "Test", accountNumber: "1234567890", phone: "0768499027" },
         description: "Test payout",
         reference: idempotencyKey,
       });
@@ -905,7 +953,7 @@ describe("createNylonPay", () => {
         amount: 50000,
         currency: "UGX",
         customer: { name: "Test", phoneNumber: "+256700000000" },
-        destination: { accountHolderName: "Test", accountNumber: "1234567890" },
+        destination: { accountHolderName: "Test", accountNumber: "1234567890", phone: "0768499027" },
         description: "Test payout under review",
       });
 
@@ -964,7 +1012,7 @@ describe("createNylonPay", () => {
       amount: 5000,
       currency: "UGX" as const,
       customer: { name: "Test", phoneNumber: "+256700000000" },
-      destination: { accountHolderName: "Test", accountNumber: "1234567890" },
+      destination: { accountHolderName: "Test", accountNumber: "1234567890", phone: "+256700000000" },
       description: "Test payout",
     };
 
@@ -1200,6 +1248,7 @@ describe("createNylonPay", () => {
         destination: {
           accountHolderName: "Jane Doe",
           accountNumber: "123456",
+          phone: "+256700000000",
         },
         description: "Refund",
       });
@@ -1504,7 +1553,7 @@ describe("createNylonPay", () => {
       amount: 5000,
       currency: "UGX" as const,
       customer: { name: "Test", phoneNumber: "+256700000000" },
-      destination: { accountHolderName: "Test", accountNumber: "123456" },
+      destination: { accountHolderName: "Test", accountNumber: "123456", phone: "+256700000000" },
       description: "Test payout",
     };
 
