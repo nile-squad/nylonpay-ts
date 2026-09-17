@@ -303,7 +303,14 @@ describe("createNylonPay", () => {
 
       expect(result.isOk).toBe(true);
       expect(mockSend).toHaveBeenCalledWith(
-        expect.objectContaining({ action: "sdk-pay-bill" }),
+        expect.objectContaining({
+          action: "sdk-pay-bill",
+          payload: expect.objectContaining({
+            reference: expect.stringMatching(
+              /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+            ),
+          }),
+        }),
       );
     });
 
@@ -326,7 +333,14 @@ describe("createNylonPay", () => {
 
       expect(result.isOk).toBe(true);
       expect(mockSend).toHaveBeenCalledWith(
-        expect.objectContaining({ action: "sdk-buy-airtime" }),
+        expect.objectContaining({
+          action: "sdk-buy-airtime",
+          payload: expect.objectContaining({
+            reference: expect.stringMatching(
+              /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+            ),
+          }),
+        }),
       );
     });
 

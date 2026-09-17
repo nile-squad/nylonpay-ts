@@ -482,10 +482,11 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
     if (!Number.isInteger(input.amount) || input.amount <= 0) {
       throwValidation("amount must be a positive integer");
     }
+    const reference = resolveReference(input.reference);
 
     const result = await transport.send<UtilityPaymentResponse>({
       action: SDK_ACTIONS.payBill,
-      payload: { ...input, phone },
+      payload: { ...input, phone, reference },
     });
     if (result.isOk) {
       return Ok(result.value);
@@ -509,10 +510,11 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
     } else {
       validateNonEmpty(input.bundleId, "bundleId");
     }
+    const reference = resolveReference(input.reference);
 
     const result = await transport.send<UtilityPaymentResponse>({
       action: SDK_ACTIONS.buyAirtime,
-      payload: { ...input, phone },
+      payload: { ...input, phone, reference },
     });
     if (result.isOk) {
       return Ok(result.value);

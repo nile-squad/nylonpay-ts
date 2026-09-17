@@ -205,6 +205,8 @@ export type PayBillInput = {
   bouquetCode?: string;
   meterNumber: string;
   phone: string;
+  /** Merchant UUID. Generated when omitted, same as collect/payout. */
+  reference?: string;
   utilityCode: "LIGHT" | "NWSC" | "DSTV" | "GOTV";
 };
 
@@ -216,6 +218,8 @@ export type BuyAirtimeInput = {
   bundleId?: string;
   phone: string;
   purchaseType: "airtime" | "bundle";
+  /** Merchant UUID. Generated when omitted, same as collect/payout. */
+  reference?: string;
 };
 
 export type UtilityPaymentResponse = {
