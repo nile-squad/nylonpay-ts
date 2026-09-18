@@ -100,16 +100,13 @@ describe("createReachabilityTracker", () => {
 
   it("skips later calls after a failure until the re-check pause ends", async () => {
     let now = 1_000;
-    const emitted: string[] = [];
     const tracker = createReachabilityTracker({
       now: () => now,
       successFreshMs: 5 * 60 * 1000,
       downRecheckMs: 15_000,
-      onUnreachable: (data) => emitted.push(data.reason),
     });
 
     tracker.noteDown(UNREACHABLE_HOST_OFFLINE);
-    expect(emitted).toEqual([UNREACHABLE_HOST_OFFLINE]);
 
     const blocked = await tracker.beforeSend();
     expect(blocked).not.toBeNull();
@@ -119,7 +116,6 @@ describe("createReachabilityTracker", () => {
     expect(parsed.category).toBe("network");
     expect(parsed.code).toBe(UNREACHABLE_CODE);
     expect(parsed.message).toBe(UNREACHABLE_HOST_OFFLINE);
-    expect(emitted).toHaveLength(1);
 
     now = 1_000 + 15_001;
     expect(await tracker.beforeSend()).toBeNull();

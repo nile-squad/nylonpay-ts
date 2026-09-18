@@ -63,9 +63,23 @@ describe("createNylonPay", () => {
       });
       expect(sdk).toBeDefined();
       expect(typeof sdk.collectPayment).toBe("function");
-      expect(typeof sdk.on).toBe("function");
-      expect(typeof sdk.once).toBe("function");
-      expect(typeof sdk.off).toBe("function");
+      expect("on" in sdk).toBe(false);
+      expect("once" in sdk).toBe(false);
+      expect("off" in sdk).toBe(false);
+    });
+
+    it("passes the global onError handler to the transport", () => {
+      const onError = vi.fn();
+
+      createNylonPay({
+        apiKey: "npk_on_error",
+        apiSecret: "nps_on_error",
+        force: true,
+        onError,
+      });
+
+      const calls = vi.mocked(createTransport).mock.calls;
+      expect(calls.at(-1)?.[0]).toMatchObject({ onError });
     });
 
     it("throws when apiKey is missing", () => {

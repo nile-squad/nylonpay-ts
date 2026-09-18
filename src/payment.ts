@@ -157,6 +157,7 @@ export function createPaymentInstance(
       parsed.message,
       category ?? parsed.category,
       retryable ?? parsed.retryable,
+      parsed.code,
     );
   }
 
@@ -169,6 +170,7 @@ export function createPaymentInstance(
     error?: string,
     category?: SdkError["category"],
     retryable?: boolean,
+    code?: string,
   ): void {
     const data: EventData = {
       event,
@@ -176,6 +178,7 @@ export function createPaymentInstance(
       transaction: state.transaction ?? undefined,
       error,
       category,
+      code,
       retryable,
       timestamp: new Date().toISOString(),
     };
@@ -201,7 +204,14 @@ export function createPaymentInstance(
         emitEvent(event, error);
       }
     } else {
-      emitEvent("error", `Failed to fetch transaction: ${txResult.error}`);
+      const parsed = parseError(txResult.error);
+      emitEvent(
+        "error",
+        parsed.message,
+        parsed.category,
+        parsed.retryable,
+        parsed.code,
+      );
     }
     state.resolved = true;
     stopUpdates();
@@ -281,7 +291,13 @@ export function createPaymentInstance(
     if (parsed.category === "not_found") {
       return;
     }
-    emitEvent("error", parsed.message, parsed.category, parsed.retryable);
+    emitEvent(
+      "error",
+      parsed.message,
+      parsed.category,
+      parsed.retryable,
+      parsed.code,
+    );
     state.resolved = true;
     stopUpdates();
   }
@@ -512,7 +528,7 @@ export function createPaymentInstance(
     state.resolved = true;
     const err = deps.initialError;
     setTimeout(() => {
-      emitEvent("error", err.message, err.category, err.retryable);
+      emitEvent("error", err.message, err.category, err.retryable, err.code);
     }, 0);
   } else {
     startUpdates();

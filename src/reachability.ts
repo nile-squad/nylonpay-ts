@@ -19,11 +19,7 @@ import {
   UNREACHABLE_HOST_OFFLINE,
   UNREACHABLE_NYLON_DOWN,
 } from "./sdk.config";
-import type {
-  SdkError,
-  UnreachableEventData,
-  UnreachableReason,
-} from "./types";
+import type { SdkError, UnreachableReason } from "./types";
 
 const HOST_OFFLINE_CODES = new Set([
   "ENOTFOUND",
@@ -149,13 +145,11 @@ type TrackerMemory = {
  * for 5 minutes.
  */
 export function createReachabilityTracker({
-  onUnreachable,
   probe,
   now = () => Date.now(),
   successFreshMs = REACHABILITY_SUCCESS_FRESH_MS,
   downRecheckMs = REACHABILITY_DOWN_RECHECK_MS,
 }: {
-  onUnreachable?: (data: UnreachableEventData) => void;
   probe?: ReachabilityProbe;
   now?: () => number;
   successFreshMs?: number;
@@ -168,14 +162,6 @@ export function createReachabilityTracker({
     lastCheckAt: null,
   };
 
-  function emit(reason: UnreachableReason): void {
-    onUnreachable?.({
-      event: "unreachable",
-      reason,
-      timestamp: new Date(now()).toISOString(),
-    });
-  }
-
   async function runCheck(): Promise<Result<never, string> | null> {
     memory.lastCheckAt = now();
     if (!probe) return null;
@@ -187,7 +173,6 @@ export function createReachabilityTracker({
     }
     memory.lastFailed = true;
     memory.lastReason = reason;
-    emit(reason);
     return Err(serializeUnreachable(reason));
   }
 
@@ -235,7 +220,6 @@ export function createReachabilityTracker({
     memory.lastFailed = true;
     memory.lastReason = reason;
     memory.lastCheckAt = now();
-    emit(reason);
   }
 
   function noteUp(): void {

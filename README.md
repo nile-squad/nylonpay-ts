@@ -18,8 +18,13 @@ npm install @nile-squad/nylonpay-ts
 import { createNylonPay } from "@nile-squad/nylonpay-ts";
 
 const nylonpay = createNylonPay({
-  apiKey: "npk_...",
-  apiSecret: "nps_...",
+  apiKey: "npk_test_...",
+  apiSecret: "nps_test_...",
+  onError: (error) => {
+    if (error.code === "unreachable") {
+      pausePaymentAttempts(error.message);
+    }
+  },
 });
 
 const payment = await nylonpay.collectPayment({
@@ -42,12 +47,13 @@ Use your test keys to work in sandbox, or your production keys to go live. There
 | `apiKey` | Yes | | Must start with `npk_` |
 | `apiSecret` | Yes | | Must start with `nps_` |
 | `baseUrl` | No | Default is used | Override for a custom endpoint |
-| `timeoutMs` | No | `30000` | Request timeout in milliseconds |
+| `timeoutMs` | No | `90000` | Request timeout in milliseconds |
 | `maxRetries` | No | `3` | Retry count for failed requests |
 | `maxPollIntervalMs` | No | `2000` | Polling interval for async payments |
 | `maxPollDurationMs` | No | *(none)* | Optional cap on total polling time. Omit to wait until terminal. |
 | `maxPollAttempts` | No | *(none)* | Optional cap on poll count. Omit to wait until terminal. |
 | `onDelayed` | No | `"wait"` | `"return"` hands back a delayed still-pending payment; `"wait"` keeps polling |
+| `onError` | No | *(none)* | Global handler for structured operation errors on this SDK instance |
 
 ## Operations
 
@@ -259,7 +265,7 @@ if (tx.isOk && tx.value.delayed && tx.value.status === "pending") {
 }
 ```
 
-Set `maxPollDurationMs` if you want the previous ~5 minute timeout behavior.
+Set `maxPollDurationMs` when you want to bound the total wait time.
 
 Use `safeTry` from `slang-ts` to handle the promise without try/catch:
 

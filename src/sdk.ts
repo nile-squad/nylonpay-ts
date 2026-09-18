@@ -9,7 +9,6 @@ import { createPaymentInstance } from "./payment";
 import { isValidPhoneFormat, normalizePhone } from "./phone";
 import { isTerminalTransactionStatus } from "./poll-interval";
 import { pollUntilTerminal } from "./poll-until-terminal";
-import { createEmitter } from "./pubsub";
 import { SDK_ACTIONS } from "./sdk.config";
 import { createSdkError, createTransport, parseError } from "./transport";
 import {
@@ -27,7 +26,7 @@ import {
   type PaymentInstance,
   type PhoneVerification,
   SANDBOX_TEST_OUTCOMES,
-  type SdkEventHandler,
+  type SdkErrorHandler,
   type SdkHook,
   type SdkHooks,
   type StatusResponse,
@@ -53,6 +52,7 @@ type ResolvedConfig = {
   onDelayed: "wait" | "return";
   fetch: typeof globalThis.fetch;
   hooks?: SdkHooks;
+  onError?: SdkErrorHandler;
 };
 
 const UUID_REGEX =
@@ -267,7 +267,6 @@ function applyBeforeHookMutation<TInput extends { reference?: string }>(
  * Returns an object implementing the NylonPaySdk interface.
  */
 export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
-  const emitter = createEmitter<"unreachable">();
   const transport = createTransport({
     apiKey: config.apiKey,
     apiSecret: config.apiSecret,
@@ -275,7 +274,7 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
     timeoutMs: config.timeoutMs,
     maxRetries: config.maxRetries,
     fetch: config.fetch,
-    onUnreachable: (data) => emitter.emit("unreachable", data),
+    onError: config.onError,
   });
 
   const commonDeps = {
@@ -666,21 +665,6 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
     return verifyWebhookSignature(input);
   }
 
-  function on(event: "unreachable", handler: SdkEventHandler): NylonPaySdk {
-    emitter.on(event, handler as (data: unknown) => void);
-    return sdk;
-  }
-
-  function once(event: "unreachable", handler: SdkEventHandler): NylonPaySdk {
-    emitter.once(event, handler as (data: unknown) => void);
-    return sdk;
-  }
-
-  function off(event: "unreachable", handler: SdkEventHandler): NylonPaySdk {
-    emitter.off(event, handler as (data: unknown) => void);
-    return sdk;
-  }
-
   const sdk: NylonPaySdk = {
     collectPayment,
     collectPaymentAndResolve,
@@ -695,9 +679,6 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
     verifyPhone,
     createInvoice,
     verifyWebhookSignature: verifyWebhook,
-    on,
-    once,
-    off,
   };
 
   return sdk;

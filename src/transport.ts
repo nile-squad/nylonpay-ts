@@ -6,7 +6,7 @@
  * @internal
  */
 
-import { Err, Ok, type Result } from "slang-ts";
+import { Err, Ok, type Result, safeTry } from "slang-ts";
 import { generateFingerprint } from "./fingerprint";
 import { generateNonce } from "./nonce";
 import {
@@ -14,6 +14,7 @@ import {
   classifyUnreachable,
   createReachabilityTracker,
   GATEWAY_DOWN_STATUSES,
+  unreachableSdkError,
 } from "./reachability";
 import {
   DEFAULT_BASE_URL,
@@ -28,8 +29,8 @@ import { createSignature, createTimestamp } from "./signature";
 import type {
   SdkError,
   SdkErrorCategory,
+  SdkErrorHandler,
   TransportRequest,
-  UnreachableEventData,
   UnreachableReason,
 } from "./types";
 import { verifyResponseSignature } from "./verify-response";
@@ -124,6 +125,7 @@ export function createSdkError(error: SdkError): Error & SdkError {
   return Object.assign(new Error(error.message), {
     category: error.category,
     retryable: error.retryable,
+    ...(error.code ? { code: error.code } : {}),
   });
 }
 
@@ -262,6 +264,7 @@ function withTimeout(timeoutMs: number): {
  * Create the transport layer for SDK requests.
  *
  * @param config - Resolved SDK configuration
+ * `onError` receives the final structured error for each failed operation.
  * @returns Transport functions
  *
  * @internal
@@ -273,7 +276,7 @@ export function createTransport({
   timeoutMs = DEFAULT_TIMEOUT_MS,
   maxRetries = DEFAULT_MAX_RETRIES,
   fetch: fetchImpl,
-  onUnreachable,
+  onError,
 }: {
   apiKey: string;
   apiSecret: string;
@@ -281,7 +284,7 @@ export function createTransport({
   timeoutMs?: number;
   maxRetries?: number;
   fetch: typeof globalThis.fetch;
-  onUnreachable?: (data: UnreachableEventData) => void;
+  onError?: SdkErrorHandler;
 }) {
   async function probeReachability(): Promise<UnreachableReason | null> {
     const { controller, cleanup } = withTimeout(REACHABILITY_PROBE_TIMEOUT_MS);
@@ -300,10 +303,17 @@ export function createTransport({
     }
   }
 
-  const reachability = createReachabilityTracker({
-    onUnreachable,
-    probe: probeReachability,
-  });
+  const reachability = createReachabilityTracker({ probe: probeReachability });
+
+  async function reportError(error: SdkError): Promise<void> {
+    if (!onError) return;
+    await safeTry(async () => onError(error));
+  }
+
+  async function returnError<T>(error: SdkError): Promise<Result<T, string>> {
+    await reportError(error);
+    return Err(JSON.stringify(error));
+  }
 
   /**
    * Send a request to the backend.
@@ -321,7 +331,12 @@ export function createTransport({
     request: TransportRequest,
   ): Promise<Result<T, string>> {
     const blocked = await reachability.beforeSend();
-    if (blocked) return blocked;
+    if (blocked) {
+      if (blocked.isErr) {
+        await reportError(parseError(blocked.error));
+      }
+      return blocked;
+    }
 
     const envelope = buildEnvelope(request);
     const signedPayload = (envelope as { payload: unknown }).payload;
@@ -356,13 +371,11 @@ export function createTransport({
         const contentLength = response.headers?.get("content-length");
         if (contentLength && Number(contentLength) > MAX_RESPONSE_BYTES) {
           cleanup();
-          return Err(
-            JSON.stringify({
-              category: "internal",
-              message: "Received an invalid response from the server",
-              retryable: false,
-            } satisfies SdkError),
-          );
+          return returnError({
+            category: "internal",
+            message: "Received an invalid response from the server",
+            retryable: false,
+          });
         }
 
         if (!response.ok) {
@@ -391,11 +404,12 @@ export function createTransport({
 
           cleanup();
           const gatewayReason = classifyHttpStatus(statusCode);
-          if (gatewayReason) reachability.noteDown(gatewayReason);
-          return Err(
-            JSON.stringify(
-              buildHttpError({ message: errorMessage, statusCode }),
-            ),
+          if (gatewayReason) {
+            reachability.noteDown(gatewayReason);
+            return returnError(unreachableSdkError(gatewayReason));
+          }
+          return returnError(
+            buildHttpError({ message: errorMessage, statusCode }),
           );
         }
 
@@ -407,13 +421,11 @@ export function createTransport({
           !("status" in responseBody)
         ) {
           cleanup();
-          return Err(
-            JSON.stringify({
-              category: "internal",
-              message: "Received an invalid response from the server",
-              retryable: false,
-            } satisfies SdkError),
-          );
+          return returnError({
+            category: "internal",
+            message: "Received an invalid response from the server",
+            retryable: false,
+          });
         }
 
         const { status, message, data } = responseBody as {
@@ -434,13 +446,11 @@ export function createTransport({
           // was absent, which let a stripped-signature response through.
           if (!responseSignature) {
             cleanup();
-            return Err(
-              JSON.stringify({
-                category: "internal",
-                message: "Could not verify the server response",
-                retryable: false,
-              } satisfies SdkError),
-            );
+            return returnError({
+              category: "internal",
+              message: "Could not verify the server response",
+              retryable: false,
+            });
           }
 
           const isValid = verifyResponseSignature(
@@ -450,13 +460,11 @@ export function createTransport({
           );
           if (!isValid) {
             cleanup();
-            return Err(
-              JSON.stringify({
-                category: "internal",
-                message: "Could not verify the server response",
-                retryable: false,
-              } satisfies SdkError),
-            );
+            return returnError({
+              category: "internal",
+              message: "Could not verify the server response",
+              retryable: false,
+            });
           }
 
           // Signature proves who produced this; the echoed nonce proves it
@@ -466,13 +474,11 @@ export function createTransport({
 
           if (echoedNonce !== headers["x-nylon-nonce"]) {
             cleanup();
-            return Err(
-              JSON.stringify({
-                category: "internal",
-                message: "Could not verify the server response",
-                retryable: false,
-              } satisfies SdkError),
-            );
+            return returnError({
+              category: "internal",
+              message: "Could not verify the server response",
+              retryable: false,
+            });
           }
 
           cleanup();
@@ -482,7 +488,7 @@ export function createTransport({
         // status === false
         const parsedError = parseError(message);
         cleanup();
-        return Err(JSON.stringify(parsedError));
+        return returnError(parsedError);
       } catch (error) {
         cleanup();
 
@@ -508,7 +514,7 @@ export function createTransport({
         }
 
         reachability.noteDown(reason);
-        return Err(JSON.stringify(sdkError));
+        return returnError(sdkError);
       }
     }
 

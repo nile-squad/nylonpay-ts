@@ -82,6 +82,7 @@ export function createNylonPay(config: NylonPayConfig): NylonPaySdk {
     onDelayed: config.onDelayed ?? "wait",
     fetch: config.fetch ?? globalThis.fetch.bind(globalThis),
     hooks: config.hooks,
+    onError: config.onError,
   };
 
   const instance = createSdkInstance(resolvedConfig);

@@ -20,11 +20,20 @@ npm install @nile-squad/nylonpay-ts
 ```
 
 ```ts
-import { createNylonPay, parseError } from "@nile-squad/nylonpay-ts";
+import {
+  createNylonPay,
+  parseError,
+  UNREACHABLE_CODE,
+} from "@nile-squad/nylonpay-ts";
 
 const nylonpay = createNylonPay({
   apiKey: process.env.NYLONPAY_API_KEY!, // must start with "npk_"
   apiSecret: process.env.NYLONPAY_API_SECRET!, // must start with "nps_"
+  onError: (error) => {
+    if (error.code === UNREACHABLE_CODE) {
+      pausePaymentAttempts(error.message);
+    }
+  },
 });
 ```
 
@@ -99,6 +108,9 @@ const tx = await payment.wait(); // transaction or null, does not throw on failu
 
 Events: `processing`, `success`, `failed`, `cancelled`, `error`.
 Also: `.on` / `.once` / `.off` / `await .wait()`.
+
+Use `onError` in `createNylonPay` for one handler across all operations. An
+unreachable error has `category: "network"` and `code: "unreachable"`.
 
 ## Webhooks
 

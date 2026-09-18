@@ -93,32 +93,12 @@ export type PaymentEvent =
   | "error";
 
 /**
- * SDK-instance event. Separate from {@link PaymentEvent}: this fires on the
- * factory return value (`nylonpay.on(...)`), not on a PaymentInstance.
- * Subscribe so you can stop sending calls while the host or Nylon Pay is down.
- */
-export type SdkEvent = "unreachable";
-
-/**
  * Why the SDK could not reach Nylon Pay. Compare these exact strings
  * (or the exported `UNREACHABLE_*` constants) rather than parsing prose.
  */
 export type UnreachableReason =
   | "host has no internet connection"
   | "Nylon Pay services seem to be down";
-
-/**
- * Payload for the SDK-instance `"unreachable"` event.
- */
-export type UnreachableEventData = {
-  event: "unreachable";
-  reason: UnreachableReason;
-  /** ISO 8601 timestamp of when the outage was detected. */
-  timestamp: string;
-};
-
-/** Callback for {@link NylonPaySdk.on} `"unreachable"`. */
-export type SdkEventHandler = (data: UnreachableEventData) => void;
 
 /**
  * Webhook event types delivered to the merchant's configured endpoint.
@@ -598,6 +578,8 @@ export type NylonPayConfig = {
   force?: boolean;
   /** Lifecycle hooks for cross-cutting concerns (logging, enrichment, etc.). */
   hooks?: SdkHooks;
+  /** Handle structured errors from operations on this SDK instance. */
+  onError?: SdkErrorHandler;
 };
 
 /**
@@ -659,6 +641,12 @@ export type SdkError = {
 };
 
 /**
+ * Global error handler registered when the SDK instance is created.
+ * The SDK contains handler failures so they cannot change the operation result.
+ */
+export type SdkErrorHandler = (error: SdkError) => void | Promise<void>;
+
+/**
  * Transport-level request envelope before wrapping in the Nile.js payload.
  * @internal
  */
@@ -680,7 +668,8 @@ export type TransportResult<T> = Result<T, string>;
  * `transaction` is populated for terminal status events (`success`, `failed`,
  * `cancelled`) — the `processing` event can fire before the full record is
  * fetched, so use `reference` there. `error` is populated for the `"error"`
- * event (network failure, timeout, reference mismatch).
+ * event (network failure, timeout, reference mismatch). `code` carries an
+ * optional stable Nylon error label.
  *
  * Note: The `processing` event fires for all non-terminal statuses, including
  * `on_hold` (review-stage payouts). Use `transaction?.statusText` for
@@ -714,6 +703,8 @@ export type EventData = {
    * merchants branch on a stable category instead of parsing the message.
    */
   category?: SdkErrorCategory;
+  /** Optional Nylon error code, present for the `"error"` event when known. */
+  code?: string;
   /**
    * Whether re-invoking the same operation may succeed. Present for the
    * `"error"` event when known.
@@ -1032,34 +1023,6 @@ export interface NylonPaySdk {
    * ```
    */
   verifyWebhookSignature(input: VerifyWebhookInput): boolean;
-
-  /**
-   * Listen for the host going offline or Nylon Pay becoming unreachable.
-   * Fires on the SDK instance, not on a PaymentInstance. Handle this so
-   * you stop sending calls until connectivity returns.
-   *
-   * `reason` is one of:
-   * - `"host has no internet connection"`
-   * - `"Nylon Pay services seem to be down"`
-   *
-   * @example
-   * ```ts
-   * nylonpay.on("unreachable", ({ reason }) => {
-   *   pausePayments(reason);
-   * });
-   * ```
-   */
-  on(event: "unreachable", handler: SdkEventHandler): NylonPaySdk;
-
-  /**
-   * Same as {@link NylonPaySdk.on} but the handler runs once, then unsubscribes.
-   */
-  once(event: "unreachable", handler: SdkEventHandler): NylonPaySdk;
-
-  /**
-   * Remove a previously registered `"unreachable"` handler.
-   */
-  off(event: "unreachable", handler: SdkEventHandler): NylonPaySdk;
 }
 
 /**
