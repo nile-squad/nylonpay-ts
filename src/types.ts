@@ -48,23 +48,37 @@ export type TransactionMode = "test" | "live";
 export type OnDelayedBehavior = "wait" | "return";
 
 /** Nylon-owned transaction failure category after we resolve the outcome. */
-export type FailureCategory = "provider" | "customer" | "internal" | "validation";
+export type FailureCategory =
+  | "provider"
+  | "customer"
+  | "internal"
+  | "validation";
 
 /** Nylon-owned transaction failure code. Never a provider enum. */
-export type FailureCode =
-  | "provider_rejection"
-  | "customer_timeout"
-  | "insufficient_balance"
-  | "invalid_number"
-  | "internal_error"
-  | "limit_exceeded"
-  | "cancelled";
+export const FAILURE_CODES = [
+  "provider_rejection",
+  "customer_timeout",
+  "insufficient_balance",
+  "invalid_number",
+  "internal_error",
+  "limit_exceeded",
+  "cancelled",
+] as const;
+
+export type FailureCode = (typeof FAILURE_CODES)[number];
 
 /**
  * Sandbox-only forced outcome. `"success"` / `"fail"` keep the original
  * behaviour; the Nylon failure-code literals force that labelled fail.
+ * Keep this list identical to the backend `SANDBOX_TEST_OUTCOME_VALUES`.
  */
-export type SandboxTestOutcome = "success" | "fail" | FailureCode;
+export const SANDBOX_TEST_OUTCOMES = [
+  "success",
+  "fail",
+  ...FAILURE_CODES,
+] as const;
+
+export type SandboxTestOutcome = (typeof SANDBOX_TEST_OUTCOMES)[number];
 
 /**
  * Events emitted by a PaymentInstance as a transaction progresses.

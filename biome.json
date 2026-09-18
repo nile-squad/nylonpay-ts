@@ -26,5 +26,17 @@
         "organizeImports": "on"
       }
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["src/signing-conformance.test.ts"],
+      "linter": {
+        "rules": {
+          "complexity": {
+            "noUselessStringRaw": "off"
+          }
+        }
+      }
+    }
+  ]
 }

@@ -46,6 +46,7 @@ export type {
   BankDetails,
   BeforeCollectHook,
   BeforePayoutHook,
+  BuyAirtimeInput,
   CollectPaymentInput,
   CreateInvoiceInput,
   Currency,
@@ -59,11 +60,9 @@ export type {
   InvoiceItem,
   InvoiceResponse,
   MakePayoutInput,
-  PayBillInput,
-  BuyAirtimeInput,
-  UtilityPaymentResponse,
   NylonPayConfig,
   NylonPaySdk,
+  PayBillInput,
   PaymentEvent,
   PaymentEventHandler,
   PaymentInstance,
@@ -78,12 +77,14 @@ export type {
   TransactionMode,
   TransactionStatus,
   TransactionType,
+  UtilityPaymentResponse,
   VerifyPhoneInput,
   VerifyWebhookInput,
   WebhookEventType,
   WebhookPayload,
   WebhookTransactionSnapshot,
 } from "./types";
+export { FAILURE_CODES, SANDBOX_TEST_OUTCOMES } from "./types";
 // Standalone webhook verification utility
 export {
   DISABLE_FRESHNESS_CHECK,

@@ -252,7 +252,11 @@ describe("createNylonPay", () => {
         amount: 5000,
         currency: "UGX",
         customer: { name: "Test", phoneNumber: "+256700000000" },
-        destination: { accountHolderName: "Test", accountNumber: "1234567890", phone: "0768499027" },
+        destination: {
+          accountHolderName: "Test",
+          accountNumber: "1234567890",
+          phone: "0768499027",
+        },
         description: "Test payout",
       });
 
@@ -273,7 +277,11 @@ describe("createNylonPay", () => {
         amount: 5000,
         currency: "UGX",
         customer: { name: "Test", phoneNumber: "+256700000000" },
-        destination: { accountHolderName: "Test", accountNumber: "1234567890", phone: "0768499027" },
+        destination: {
+          accountHolderName: "Test",
+          accountNumber: "1234567890",
+          phone: "0768499027",
+        },
         description: "Test payout",
       });
 
@@ -285,7 +293,11 @@ describe("createNylonPay", () => {
 
     it("payBill sends the bill action", async () => {
       mockSend.mockResolvedValue(
-        Ok({ reference: "bill-ref", status: "successful", transactionId: "txn-bill" }),
+        Ok({
+          reference: "bill-ref",
+          status: "successful",
+          transactionId: "txn-bill",
+        }),
       );
 
       const sdk = createNylonPay({
@@ -316,7 +328,11 @@ describe("createNylonPay", () => {
 
     it("buyAirtime sends the airtime action", async () => {
       mockSend.mockResolvedValue(
-        Ok({ reference: "air-ref", status: "successful", transactionId: "txn-air" }),
+        Ok({
+          reference: "air-ref",
+          status: "successful",
+          transactionId: "txn-air",
+        }),
       );
 
       const sdk = createNylonPay({
@@ -516,7 +532,11 @@ describe("createNylonPay", () => {
         amount: 5000,
         currency: "UGX",
         customer: { name: "Test", phoneNumber: "0768499027" },
-        destination: { accountHolderName: "Test", accountNumber: "1234567890", phone: "0768499027" },
+        destination: {
+          accountHolderName: "Test",
+          accountNumber: "1234567890",
+          phone: "0768499027",
+        },
         description: "Test payout",
       });
 
@@ -538,7 +558,11 @@ describe("createNylonPay", () => {
         amount: 5000,
         currency: "UGX",
         customer: { name: "Test", phoneNumber: "0768499027" },
-        destination: { accountHolderName: "Test", accountNumber: "1234567890", phone: "0768499027" },
+        destination: {
+          accountHolderName: "Test",
+          accountNumber: "1234567890",
+          phone: "0768499027",
+        },
         description: "Test payout",
       });
 
@@ -940,7 +964,11 @@ describe("createNylonPay", () => {
         amount: 5000,
         currency: "UGX",
         customer: { name: "Test", phoneNumber: "+256700000000" },
-        destination: { accountHolderName: "Test", accountNumber: "1234567890", phone: "0768499027" },
+        destination: {
+          accountHolderName: "Test",
+          accountNumber: "1234567890",
+          phone: "0768499027",
+        },
         description: "Test",
       });
 
@@ -963,7 +991,11 @@ describe("createNylonPay", () => {
         amount: 10000,
         currency: "UGX",
         customer: { name: "Test", phoneNumber: "+256700000000" },
-        destination: { accountHolderName: "Test", accountNumber: "1234567890", phone: "0768499027" },
+        destination: {
+          accountHolderName: "Test",
+          accountNumber: "1234567890",
+          phone: "0768499027",
+        },
         description: "Test payout",
         reference: idempotencyKey,
       });
@@ -988,7 +1020,11 @@ describe("createNylonPay", () => {
         amount: 50000,
         currency: "UGX",
         customer: { name: "Test", phoneNumber: "+256700000000" },
-        destination: { accountHolderName: "Test", accountNumber: "1234567890", phone: "0768499027" },
+        destination: {
+          accountHolderName: "Test",
+          accountNumber: "1234567890",
+          phone: "0768499027",
+        },
         description: "Test payout under review",
       });
 
@@ -1047,7 +1083,11 @@ describe("createNylonPay", () => {
       amount: 5000,
       currency: "UGX" as const,
       customer: { name: "Test", phoneNumber: "+256700000000" },
-      destination: { accountHolderName: "Test", accountNumber: "1234567890", phone: "+256700000000" },
+      destination: {
+        accountHolderName: "Test",
+        accountNumber: "1234567890",
+        phone: "+256700000000",
+      },
       description: "Test payout",
     };
 
@@ -1588,7 +1628,11 @@ describe("createNylonPay", () => {
       amount: 5000,
       currency: "UGX" as const,
       customer: { name: "Test", phoneNumber: "+256700000000" },
-      destination: { accountHolderName: "Test", accountNumber: "123456", phone: "+256700000000" },
+      destination: {
+        accountHolderName: "Test",
+        accountNumber: "123456",
+        phone: "+256700000000",
+      },
       description: "Test payout",
     };
 
@@ -1651,6 +1695,20 @@ describe("createNylonPay", () => {
       expect("testOutcome" in request.payload).toBe(false);
     });
 
+    it("collectPayment forwards a Nylon failure-code testOutcome on the wire", async () => {
+      mockSend.mockResolvedValue(
+        Ok({ reference: "test-ref", status: "pending" }),
+      );
+
+      await testSdk().collectPayment({
+        ...collectBase,
+        testOutcome: "insufficient_balance",
+      });
+
+      const request = mockSend.mock.calls[0][0];
+      expect(request.payload.testOutcome).toBe("insufficient_balance");
+    });
+
     it("invalid testOutcome throws a validation error before any network call", async () => {
       const sdk = testSdk();
 
@@ -1659,13 +1717,17 @@ describe("createNylonPay", () => {
           ...collectBase,
           testOutcome: "sometimes" as unknown as "fail",
         }),
-      ).rejects.toThrow('testOutcome must be "success" or "fail"');
+      ).rejects.toThrow(
+        'testOutcome must be "success", "fail", or a Nylon failure code',
+      );
       await expect(
         sdk.makePayout({
           ...payoutBase,
           testOutcome: "sometimes" as unknown as "fail",
         }),
-      ).rejects.toThrow('testOutcome must be "success" or "fail"');
+      ).rejects.toThrow(
+        'testOutcome must be "success", "fail", or a Nylon failure code',
+      );
       expect(mockSend).not.toHaveBeenCalled();
     });
   });

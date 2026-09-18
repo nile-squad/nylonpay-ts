@@ -11,28 +11,29 @@ import { isTerminalTransactionStatus } from "./poll-interval";
 import { pollUntilTerminal } from "./poll-until-terminal";
 import { SDK_ACTIONS } from "./sdk.config";
 import { createSdkError, createTransport, parseError } from "./transport";
-import type {
-  CollectPaymentInput,
-  CreateInvoiceInput,
-  GetStatusInput,
-  GetTransactionInput,
-  InvoiceResponse,
-  ListTransactionsInput,
-  ListTransactionsResponse,
-  MakePayoutInput,
-  NylonPaySdk,
-  PaymentInstance,
-  PhoneVerification,
-  PayBillInput,
-  BuyAirtimeInput,
-  UtilityPaymentResponse,
-  SdkHook,
-  SdkHooks,
-  StatusResponse,
-  Transaction,
-  TransactionStatus,
-  VerifyPhoneInput,
-  VerifyWebhookInput,
+import {
+  type BuyAirtimeInput,
+  type CollectPaymentInput,
+  type CreateInvoiceInput,
+  type GetStatusInput,
+  type GetTransactionInput,
+  type InvoiceResponse,
+  type ListTransactionsInput,
+  type ListTransactionsResponse,
+  type MakePayoutInput,
+  type NylonPaySdk,
+  type PayBillInput,
+  type PaymentInstance,
+  type PhoneVerification,
+  SANDBOX_TEST_OUTCOMES,
+  type SdkHook,
+  type SdkHooks,
+  type StatusResponse,
+  type Transaction,
+  type TransactionStatus,
+  type UtilityPaymentResponse,
+  type VerifyPhoneInput,
+  type VerifyWebhookInput,
 } from "./types";
 import { verifyWebhookSignature } from "./verify-webhook";
 
@@ -137,15 +138,14 @@ function hasNoNylonFloor(currency: string): boolean {
  * `before*` hook mutations (which re-run validation via
  * {@link applyBeforeHookMutation}).
  */
-function validateTestOutcome(
-  testOutcome: "success" | "fail" | undefined,
-): void {
+function validateTestOutcome(testOutcome: string | undefined): void {
   if (
     testOutcome !== undefined &&
-    testOutcome !== "success" &&
-    testOutcome !== "fail"
+    !(SANDBOX_TEST_OUTCOMES as readonly string[]).includes(testOutcome)
   ) {
-    throwValidation('testOutcome must be "success" or "fail"');
+    throwValidation(
+      'testOutcome must be "success", "fail", or a Nylon failure code',
+    );
   }
 }
 
@@ -504,11 +504,15 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
     const phone = normalizePhone(input.phone);
     validatePhoneFormat(phone, "phone");
     if (input.purchaseType === "airtime") {
-      if (input.amount == null || !Number.isInteger(input.amount) || input.amount <= 0) {
+      if (
+        input.amount == null ||
+        !Number.isInteger(input.amount) ||
+        input.amount <= 0
+      ) {
         throwValidation("amount must be a positive integer");
       }
-    } else {
-      validateNonEmpty(input.bundleId, "bundleId");
+    } else if (!input.bundleId || input.bundleId.trim() === "") {
+      throwValidation("bundleId is required");
     }
     const reference = resolveReference(input.reference);
 
