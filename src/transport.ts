@@ -10,15 +10,28 @@ import { Err, Ok, type Result } from "slang-ts";
 import { generateFingerprint } from "./fingerprint";
 import { generateNonce } from "./nonce";
 import {
+  classifyHttpStatus,
+  classifyUnreachable,
+  createReachabilityTracker,
+  GATEWAY_DOWN_STATUSES,
+} from "./reachability";
+import {
   DEFAULT_BASE_URL,
   DEFAULT_MAX_RETRIES,
   DEFAULT_TIMEOUT_MS,
   MAX_RESPONSE_BYTES,
+  REACHABILITY_PROBE_TIMEOUT_MS,
   RETRYABLE_STATUS_CODES,
   SDK_SERVICE,
 } from "./sdk.config";
 import { createSignature, createTimestamp } from "./signature";
-import type { SdkError, SdkErrorCategory, TransportRequest } from "./types";
+import type {
+  SdkError,
+  SdkErrorCategory,
+  TransportRequest,
+  UnreachableEventData,
+  UnreachableReason,
+} from "./types";
 import { verifyResponseSignature } from "./verify-response";
 
 /** Cached fingerprint for this server instance. */
@@ -260,6 +273,7 @@ export function createTransport({
   timeoutMs = DEFAULT_TIMEOUT_MS,
   maxRetries = DEFAULT_MAX_RETRIES,
   fetch: fetchImpl,
+  onUnreachable,
 }: {
   apiKey: string;
   apiSecret: string;
@@ -267,7 +281,30 @@ export function createTransport({
   timeoutMs?: number;
   maxRetries?: number;
   fetch: typeof globalThis.fetch;
+  onUnreachable?: (data: UnreachableEventData) => void;
 }) {
+  async function probeReachability(): Promise<UnreachableReason | null> {
+    const { controller, cleanup } = withTimeout(REACHABILITY_PROBE_TIMEOUT_MS);
+    try {
+      const response = await fetchImpl(baseUrl, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+        signal: controller.signal,
+      });
+      cleanup();
+      return classifyHttpStatus(response.status);
+    } catch (error) {
+      cleanup();
+      return classifyUnreachable(error);
+    }
+  }
+
+  const reachability = createReachabilityTracker({
+    onUnreachable,
+    probe: probeReachability,
+  });
+
   /**
    * Send a request to the backend.
    *
@@ -283,6 +320,9 @@ export function createTransport({
   async function send<T>(
     request: TransportRequest,
   ): Promise<Result<T, string>> {
+    const blocked = await reachability.beforeSend();
+    if (blocked) return blocked;
+
     const envelope = buildEnvelope(request);
     const signedPayload = (envelope as { payload: unknown }).payload;
     const bodyString = JSON.stringify(envelope);
@@ -305,6 +345,11 @@ export function createTransport({
           body: bodyString,
           signal: controller.signal,
         });
+
+        // Any HTTP answer except a gateway-down status means Nylon is up.
+        if (!GATEWAY_DOWN_STATUSES.has(response.status)) {
+          reachability.noteUp();
+        }
 
         // Reject oversized responses before parsing — a compromised
         // server could return a huge body to exhaust memory.
@@ -345,6 +390,8 @@ export function createTransport({
           }
 
           cleanup();
+          const gatewayReason = classifyHttpStatus(statusCode);
+          if (gatewayReason) reachability.noteDown(gatewayReason);
           return Err(
             JSON.stringify(
               buildHttpError({ message: errorMessage, statusCode }),
@@ -441,19 +488,26 @@ export function createTransport({
 
         const isAbort =
           error instanceof DOMException && error.name === "AbortError";
-        const sdkError: SdkError = {
-          category: isAbort ? "timeout" : "network",
-          message: isAbort
-            ? "The request timed out"
-            : "Could not reach the server, check your network connection and try again",
-          retryable: true,
-        };
+        const reason = classifyUnreachable(error);
+        const sdkError: SdkError = isAbort
+          ? {
+              category: "timeout",
+              message: "The request timed out",
+              retryable: true,
+            }
+          : {
+              category: "network",
+              message: reason,
+              retryable: true,
+              code: "unreachable",
+            };
 
         if (currentAttempt < maxRetries) {
           await delay(calculateBackoff(currentAttempt));
           return attempt(currentAttempt + 1);
         }
 
+        reachability.noteDown(reason);
         return Err(JSON.stringify(sdkError));
       }
     }

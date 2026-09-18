@@ -6,6 +6,7 @@ Upgrading from 2.0.1.
 
 ### Added
 
+- `nylonpay.on("unreachable", ({ reason }) => { ... })` fires when the host is offline or Nylon Pay looks down. A successful call skips further down-checks for about 5 minutes. If the last check is older than that, it checks again rather than treating Nylon as still down. After a failure, the next operation is checked before it is attempted. Handle this event and pause your own retries until it recovers.
 - `getStatus` now returns `id`, `operatorTid`, `failureReason`, `failureCategory`, `failureCode`, `statusText`, and `delayed`.
 - Transaction and webhook snapshots carry Nylon `failureCategory` / `failureCode`. Webhook collections send `type: "collection"` plus `legacyType: "charge"`.
 - `testOutcome` accepts Nylon failure-code literals. `parseError` reads an optional `-- error-code:` suffix onto `SdkError.code`.

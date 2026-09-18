@@ -26,6 +26,27 @@ export const DEFAULT_MAX_POLL_ATTEMPTS = undefined;
  */
 export const POLL_JITTER_MS = 250;
 
+/** After a successful round-trip, skip reachability checks for this long. */
+export const REACHABILITY_SUCCESS_FRESH_MS = 5 * 60 * 1000;
+
+/**
+ * After an unreachable failure, skip re-checking on every poll. The next
+ * check runs when a new operation is attempted after this pause.
+ */
+export const REACHABILITY_DOWN_RECHECK_MS = 15_000;
+
+/** Short timeout for a reachability check so it cannot stall a payment. */
+export const REACHABILITY_PROBE_TIMEOUT_MS = 3_000;
+
+/** `SdkError.code` when the SDK skipped a call because Nylon was unreachable. */
+export const UNREACHABLE_CODE = "unreachable";
+
+/** Host has no usable network. Stable string for `unreachable` handlers. */
+export const UNREACHABLE_HOST_OFFLINE = "host has no internet connection";
+
+/** Nylon Pay's edge or API did not complete a request. Stable string. */
+export const UNREACHABLE_NYLON_DOWN = "Nylon Pay services seem to be down";
+
 /** Nile.js service name for all SDK operations */
 export const SDK_SERVICE = "sdk";
 

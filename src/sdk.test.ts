@@ -63,6 +63,9 @@ describe("createNylonPay", () => {
       });
       expect(sdk).toBeDefined();
       expect(typeof sdk.collectPayment).toBe("function");
+      expect(typeof sdk.on).toBe("function");
+      expect(typeof sdk.once).toBe("function");
+      expect(typeof sdk.off).toBe("function");
     });
 
     it("throws when apiKey is missing", () => {

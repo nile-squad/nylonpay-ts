@@ -93,6 +93,34 @@ export type PaymentEvent =
   | "error";
 
 /**
+ * SDK-instance event. Separate from {@link PaymentEvent}: this fires on the
+ * factory return value (`nylonpay.on(...)`), not on a PaymentInstance.
+ * Subscribe so you can stop sending calls while the host or Nylon Pay is down.
+ */
+export type SdkEvent = "unreachable";
+
+/**
+ * Why the SDK could not reach Nylon Pay. Compare these exact strings
+ * (or the exported `UNREACHABLE_*` constants) rather than parsing prose.
+ */
+export type UnreachableReason =
+  | "host has no internet connection"
+  | "Nylon Pay services seem to be down";
+
+/**
+ * Payload for the SDK-instance `"unreachable"` event.
+ */
+export type UnreachableEventData = {
+  event: "unreachable";
+  reason: UnreachableReason;
+  /** ISO 8601 timestamp of when the outage was detected. */
+  timestamp: string;
+};
+
+/** Callback for {@link NylonPaySdk.on} `"unreachable"`. */
+export type SdkEventHandler = (data: UnreachableEventData) => void;
+
+/**
  * Webhook event types delivered to the merchant's configured endpoint.
  * Merchants use these to update internal order state, send customer
  * notifications, and reconcile ledgers without polling.
@@ -1004,6 +1032,34 @@ export interface NylonPaySdk {
    * ```
    */
   verifyWebhookSignature(input: VerifyWebhookInput): boolean;
+
+  /**
+   * Listen for the host going offline or Nylon Pay becoming unreachable.
+   * Fires on the SDK instance, not on a PaymentInstance. Handle this so
+   * you stop sending calls until connectivity returns.
+   *
+   * `reason` is one of:
+   * - `"host has no internet connection"`
+   * - `"Nylon Pay services seem to be down"`
+   *
+   * @example
+   * ```ts
+   * nylonpay.on("unreachable", ({ reason }) => {
+   *   pausePayments(reason);
+   * });
+   * ```
+   */
+  on(event: "unreachable", handler: SdkEventHandler): NylonPaySdk;
+
+  /**
+   * Same as {@link NylonPaySdk.on} but the handler runs once, then unsubscribes.
+   */
+  once(event: "unreachable", handler: SdkEventHandler): NylonPaySdk;
+
+  /**
+   * Remove a previously registered `"unreachable"` handler.
+   */
+  off(event: "unreachable", handler: SdkEventHandler): NylonPaySdk;
 }
 
 /**

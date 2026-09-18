@@ -30,6 +30,11 @@
 
 // Factory function - main entry point
 export { createNylonPay } from "./create-nylon-pay";
+export {
+  UNREACHABLE_CODE,
+  UNREACHABLE_HOST_OFFLINE,
+  UNREACHABLE_NYLON_DOWN,
+} from "./sdk.config";
 // Error utilities
 export { createSdkError, parseError } from "./transport";
 // SDK instance type
@@ -71,12 +76,16 @@ export type {
   SandboxTestOutcome,
   SdkError,
   SdkErrorCategory,
+  SdkEvent,
+  SdkEventHandler,
   SdkHooks,
   StatusResponse,
   Transaction,
   TransactionMode,
   TransactionStatus,
   TransactionType,
+  UnreachableEventData,
+  UnreachableReason,
   UtilityPaymentResponse,
   VerifyPhoneInput,
   VerifyWebhookInput,

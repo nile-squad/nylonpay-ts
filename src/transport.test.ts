@@ -410,6 +410,118 @@ describe("createTransport", () => {
       );
     });
   });
+
+  describe("reachability", () => {
+    it("emits Nylon-down and skips the next signed call after retries exhaust", async () => {
+      vi.useRealTimers();
+      const onUnreachable = vi.fn();
+      mockFetch.mockRejectedValue(
+        Object.assign(new Error("connect ECONNREFUSED"), {
+          code: "ECONNREFUSED",
+        }),
+      );
+
+      const transport = createTransport({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        baseUrl: "https://test.api",
+        timeoutMs: 50,
+        maxRetries: 0,
+        fetch: mockFetch,
+        onUnreachable,
+      });
+
+      const first = await transport.send({
+        action: "sdk-get-status",
+        payload: {},
+      });
+      expect(first.isErr).toBe(true);
+      if (first.isOk) throw new Error("expected network error");
+      const parsed = parseError(first.error);
+      expect(parsed.category).toBe("network");
+      expect(parsed.message).toBe("Nylon Pay services seem to be down");
+      expect(parsed.code).toBe("unreachable");
+      expect(onUnreachable).toHaveBeenCalledTimes(1);
+      expect(onUnreachable.mock.calls[0][0].reason).toBe(
+        "Nylon Pay services seem to be down",
+      );
+
+      mockFetch.mockClear();
+      const second = await transport.send({
+        action: "sdk-get-status",
+        payload: {},
+      });
+      expect(mockFetch).not.toHaveBeenCalled();
+      expect(second.isErr).toBe(true);
+      if (second.isOk) throw new Error("expected skip");
+      expect(parseError(second.error).code).toBe("unreachable");
+      expect(onUnreachable).toHaveBeenCalledTimes(1);
+    });
+
+    it("emits host-offline for a DNS failure", async () => {
+      vi.useRealTimers();
+      const onUnreachable = vi.fn();
+      mockFetch.mockRejectedValue(
+        Object.assign(new Error("fetch failed"), {
+          cause: Object.assign(new Error("getaddrinfo ENOTFOUND api.test"), {
+            code: "ENOTFOUND",
+          }),
+        }),
+      );
+
+      const transport = createTransport({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        baseUrl: "https://test.api",
+        timeoutMs: 50,
+        maxRetries: 0,
+        fetch: mockFetch,
+        onUnreachable,
+      });
+
+      const result = await transport.send({
+        action: "sdk-get-status",
+        payload: {},
+      });
+      expect(result.isErr).toBe(true);
+      if (result.isOk) throw new Error("expected network error");
+      expect(parseError(result.error).message).toBe(
+        "host has no internet connection",
+      );
+      expect(onUnreachable.mock.calls[0][0].reason).toBe(
+        "host has no internet connection",
+      );
+    });
+
+    it("does not emit unreachable on HTTP 400", async () => {
+      vi.useRealTimers();
+      const onUnreachable = vi.fn();
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 400,
+        statusText: "Bad Request",
+        json: () => Promise.resolve({ message: "Invalid key" }),
+      });
+
+      const transport = createTransport({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        baseUrl: "https://test.api",
+        timeoutMs: 50,
+        maxRetries: 0,
+        fetch: mockFetch,
+        onUnreachable,
+      });
+
+      const result = await transport.send({
+        action: "sdk-get-status",
+        payload: {},
+      });
+      expect(result.isErr).toBe(true);
+      expect(onUnreachable).not.toHaveBeenCalled();
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+  });
 });
 
 describe("parseError", () => {
