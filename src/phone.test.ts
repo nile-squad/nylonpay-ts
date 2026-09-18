@@ -33,4 +33,16 @@ describe("normalizePhone", () => {
   it("leaves an international Kenya number unchanged", () => {
     expect(normalizePhone("+254710000000", "KES")).toBe("254710000000");
   });
+
+  it("keeps an international Kenya number when currency is omitted", () => {
+    expect(normalizePhone("+254710000000")).toBe("254710000000");
+  });
+
+  it("gives local numbers the dial code for Tanzania, Rwanda, DRC, Zambia and Cameroon", () => {
+    expect(normalizePhone("0712345678", "TZS")).toBe("255712345678");
+    expect(normalizePhone("0781234567", "RWF")).toBe("250781234567");
+    expect(normalizePhone("0812345678", "CDF")).toBe("243812345678");
+    expect(normalizePhone("0763456789", "ZMW")).toBe("260763456789");
+    expect(normalizePhone("0671234567", "XAF")).toBe("237671234567");
+  });
 });

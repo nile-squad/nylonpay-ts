@@ -187,6 +187,9 @@ if (result.isOk && result.value.verified) {
 }
 ```
 
+Kenya, Tanzania, Rwanda, and DR Congo numbers work too: pass them with the country
+code (`+254710000000`). A local number starting with `0` is treated as Uganda.
+
 ### createInvoice
 
 Generate a hosted payment link. Card payments are only supported via this hosted flow.

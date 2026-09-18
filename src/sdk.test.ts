@@ -567,6 +567,27 @@ describe("createNylonPay", () => {
       expect(request.payload.phoneNumber).toBe("256768499027");
     });
 
+    it("verifyPhone sends an international Kenya number unchanged", async () => {
+      mockSend.mockResolvedValue(
+        Ok({
+          phoneNumber: "254710000000",
+          customerName: "Jane",
+          verified: true,
+        }),
+      );
+
+      const sdk = createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+      });
+
+      await sdk.verifyPhone({ phoneNumber: "+254710000000" });
+
+      const request = mockSend.mock.calls[0][0];
+      expect(request.payload.phoneNumber).toBe("254710000000");
+    });
+
     it("leaves already-normalized phones unchanged", async () => {
       mockSend.mockResolvedValue(
         Ok({ reference: "test-ref", status: "pending" }),

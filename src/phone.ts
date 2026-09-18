@@ -1,12 +1,13 @@
 /**
- * Normalize a phone number to international format without leading +.
+ * Normalize a phone number to international digits without a leading +.
  *
  * - Strips all whitespace
  * - Strips leading +
  * - If starts with "0" and length is 10 → prepend that currency's dial code
  *
- * Uganda local numbers still become 256… when currency is omitted or UGX.
- * Kenya, Tanzania, Rwanda and DRC local numbers take 254, 255, 250 and 243.
+ * Local `0…` numbers take the dial code for `currency` (UGX 256, KES 254,
+ * TZS 255, RWF 250, CDF 243, ZMW 260, XAF 237). Unknown currency uses 256.
+ * International numbers already carrying a calling code pass through.
  */
 const DIAL_BY_CURRENCY: Readonly<Record<string, string>> = {
   CDF: "243",
@@ -14,6 +15,8 @@ const DIAL_BY_CURRENCY: Readonly<Record<string, string>> = {
   RWF: "250",
   TZS: "255",
   UGX: "256",
+  XAF: "237",
+  ZMW: "260",
 };
 
 export function normalizePhone(phone: string, currency = "UGX"): string {
@@ -32,7 +35,7 @@ export function normalizePhone(phone: string, currency = "UGX"): string {
  *
  * WHY: `normalizePhone` is intentionally pure — it transforms but never rejects,
  * so garbage like "not-a-phone" or "123" passes through unchanged. This is the
- * synchronous mirror of the backend's `validatePhone`, letting bad input fail
+ * synchronous mirror of the backend's cheap check, letting bad input fail
  * before a network round-trip. It is deliberately loose (9–15 digits) — the
  * server remains the source of truth for strict per-country validation.
  *
