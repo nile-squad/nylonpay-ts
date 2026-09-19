@@ -15,10 +15,10 @@ import { Err, type Result } from "slang-ts";
 import {
   REACHABILITY_DOWN_RECHECK_MS,
   REACHABILITY_SUCCESS_FRESH_MS,
-  UNREACHABLE_CODE,
   UNREACHABLE_HOST_OFFLINE,
   UNREACHABLE_NYLON_DOWN,
 } from "./sdk.config";
+import { buildSdkError } from "./sdk-error";
 import type { SdkError, UnreachableReason } from "./types";
 
 const HOST_OFFLINE_CODES = new Set([
@@ -115,12 +115,11 @@ export function classifyHttpStatus(
 }
 
 export function unreachableSdkError(reason: UnreachableReason): SdkError {
-  return {
-    category: "network",
+  return buildSdkError({
+    reason: reason === UNREACHABLE_HOST_OFFLINE ? "NETWORK" : "SERVICES_DOWN",
     message: reason,
     retryable: true,
-    code: UNREACHABLE_CODE,
-  };
+  });
 }
 
 export function serializeUnreachable(reason: UnreachableReason): string {

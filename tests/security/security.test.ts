@@ -241,7 +241,7 @@ describe("SDK security suite", () => {
       // jargon-free, so assert the category rather than leaked wording.
       if (result.isErr) {
         const err = JSON.parse(result.error) as { category: string };
-        expect(err.category).toBe("internal");
+        expect(err.reason).toBe("INTERNAL");
       }
     });
 

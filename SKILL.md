@@ -20,17 +20,13 @@ npm install @nile-squad/nylonpay-ts
 ```
 
 ```ts
-import {
-  createNylonPay,
-  parseError,
-  UNREACHABLE_CODE,
-} from "@nile-squad/nylonpay-ts";
+import { createNylonPay, parseError } from "@nile-squad/nylonpay-ts";
 
 const nylonpay = createNylonPay({
   apiKey: process.env.NYLONPAY_API_KEY!, // must start with "npk_"
   apiSecret: process.env.NYLONPAY_API_SECRET!, // must start with "nps_"
   onError: (error) => {
-    if (error.code === UNREACHABLE_CODE) {
+    if (error.reason === "SERVICES_DOWN") {
       pausePaymentAttempts(error.message);
     }
   },
@@ -38,9 +34,8 @@ const nylonpay = createNylonPay({
 ```
 
 - Server-side only. Never ship `apiSecret` to a browser or mobile client.
-- Test vs live mode comes from the **key**, not a config flag. Use your sandbox
-  key for test transactions and your live key for real money. There is no
-  `environment` option.
+- Test vs live mode comes from the **key**. Use your sandbox key for test
+  transactions and your live key for real money.
 - With a sandbox key, pass `testOutcome: "success"` or `testOutcome: "fail"` on
   `collectPayment`, `collectPaymentAndResolve`, `makePayout` or
   `makePayoutAndResolve` to force the result. Omit it and the sandbox decides at
@@ -60,7 +55,7 @@ const result = await nylonpay.getStatus({
   reference: "550e8400-e29b-41d4-a716-446655440000",
 });
 if (!result.isOk) {
-  const error = parseError(result.error); // { message, retryable, category, ... }
+  const error = parseError(result.error); // { message, retryable, reason, ... }
   if (error.retryable) {
     /* safe to retry */
   }
@@ -110,7 +105,8 @@ Events: `processing`, `success`, `failed`, `cancelled`, `error`.
 Also: `.on` / `.once` / `.off` / `await .wait()`.
 
 Use `onError` in `createNylonPay` for one handler across all operations. An
-unreachable error has `category: "network"` and `code: "unreachable"`.
+`NETWORK` means this machine is offline. `SERVICES_DOWN` means Nylon Pay did
+not complete the request.
 
 ## Webhooks
 

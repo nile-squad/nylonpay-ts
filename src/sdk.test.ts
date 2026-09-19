@@ -48,7 +48,8 @@ describe("createNylonPay", () => {
     vi.mocked(createTransport).mockReturnValue({
       send: mockSend,
       parseError: vi.fn((error: string) => ({
-        code: "UNKNOWN",
+        reason: "INTERNAL" as const,
+        category: "internal" as const,
         message: error,
       })),
     });
@@ -1352,6 +1353,7 @@ describe("createNylonPay", () => {
           );
         },
       );
+      expect(errorData.reason).toBe("LIMIT");
       expect(errorData.category).toBe("limit");
       expect(errorData.error).toBe("Transaction exceeds account limits");
     });

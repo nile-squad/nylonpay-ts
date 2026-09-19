@@ -10,6 +10,7 @@ import { isValidPhoneFormat, normalizePhone } from "./phone";
 import { isTerminalTransactionStatus } from "./poll-interval";
 import { pollUntilTerminal } from "./poll-until-terminal";
 import { SDK_ACTIONS } from "./sdk.config";
+import { buildSdkError } from "./sdk-error";
 import { createSdkError, createTransport, parseError } from "./transport";
 import {
   type BuyAirtimeInput,
@@ -102,10 +103,10 @@ async function runHook<TFn extends (...args: never[]) => unknown>(
 /**
  * Throw a categorized input-validation error. Keeps thrown errors consistent
  * with transport-init failures so a merchant's `catch (e)` can always read
- * `e.category` (here always `"validation"`).
+ * `e.reason` (here always `"VALIDATION"`).
  */
 function throwValidation(message: string): never {
-  throw createSdkError({ category: "validation", message });
+  throw createSdkError(buildSdkError({ reason: "VALIDATION", message }));
 }
 
 /** Validate collection amount is a positive integer. Uganda keeps 500. */

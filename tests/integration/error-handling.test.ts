@@ -64,7 +64,7 @@ describe("error handling", () => {
     expect(result.isOk).toBe(false);
     if (result.isErr) {
       const error = parseError(result.error);
-      expect(error.category).toBe("not_found");
+      expect(error.reason).toBe("NOT_FOUND");
     }
   });
 
@@ -106,7 +106,7 @@ describe("error handling", () => {
           );
         },
       );
-      expect(errorData.category).toBe("auth");
+      expect(errorData.reason).toBe("AUTH");
     },
   );
 
@@ -124,7 +124,7 @@ describe("error handling", () => {
     const status = await sdk.getStatus({ reference: "any-ref" });
     expect(status.isOk).toBe(false);
     if (status.isErr) {
-      expect(parseError(status.error).category).toBe("auth");
+      expect(parseError(status.error).reason).toBe("AUTH");
     }
 
     // Initiation failure surfaces via the "error" event, not a throw (Invariant 17).
@@ -137,7 +137,7 @@ describe("error handling", () => {
     const errorData = await new Promise<Record<string, unknown>>((resolve) => {
       instance.on("error", (data) => resolve(data as Record<string, unknown>));
     });
-    expect(errorData.category).toBe("auth");
+    expect(errorData.reason).toBe("AUTH");
   });
 
   it("throws a validation category for bad input (no network)", async () => {

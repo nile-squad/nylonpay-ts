@@ -113,6 +113,7 @@ describe("createReachabilityTracker", () => {
     expect(blocked?.isErr).toBe(true);
     if (!blocked || blocked.isOk) throw new Error("expected skip");
     const parsed = parseError(blocked.error);
+    expect(parsed.reason).toBe("NETWORK");
     expect(parsed.category).toBe("network");
     expect(parsed.code).toBe(UNREACHABLE_CODE);
     expect(parsed.message).toBe(UNREACHABLE_HOST_OFFLINE);

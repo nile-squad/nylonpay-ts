@@ -93,8 +93,8 @@ export type PaymentEvent =
   | "error";
 
 /**
- * Why the SDK could not reach Nylon Pay. Compare these exact strings
- * (or the exported `UNREACHABLE_*` constants) rather than parsing prose.
+ * Why the SDK could not reach Nylon Pay. Used as `SdkError.message` when
+ * `reason` is `NETWORK` or `SERVICES_DOWN`.
  */
 export type UnreachableReason =
   | "host has no internet connection"
@@ -595,23 +595,38 @@ export type SdkAuthHeaders = {
 };
 
 /**
- * Well-known failure categories. The SDK derives these from the server's
- * tagged error (or from the transport for `network`/`timeout`) so merchants can
- * branch on a stable category instead of parsing messages or HTTP status codes.
+ * Why an SDK operation failed. Branch on these exact strings.
  *
- * - `auth` — invalid/missing/revoked/expired key, bad signature, replay, scope.
- * - `validation` — input the server rejected.
- * - `limit` — account/KYC transaction limits exceeded.
- * - `rate_limit` — too many requests.
- * - `account` — merchant account missing or not active.
- * - `provider` — payment provider/engine rejected the operation.
- * - `duplicate` — the reference was already used for another transaction.
- *   Retrying with a NEW reference will pass; reusing the same reference
- *   replays the existing transaction instead of charging again.
- * - `not_found` — referenced transaction does not exist.
- * - `internal` — unexpected server-side failure.
- * - `network` — request never reached the server (DNS, TLS, connection).
- * - `timeout` — request exceeded the configured timeout.
+ * - `AUTH` — invalid, missing, revoked, or expired key, bad signature, replay, scope.
+ * - `VALIDATION` — input the server rejected.
+ * - `LIMIT` — account or KYC transaction limits exceeded.
+ * - `RATE_LIMIT` — too many requests.
+ * - `ACCOUNT` — merchant account missing or not active.
+ * - `PROVIDER` — payment provider rejected the operation.
+ * - `DUPLICATE` — the reference belongs to another account. Retry with a new
+ *   reference. Reusing a reference you own replays that transaction.
+ * - `NOT_FOUND` — referenced transaction does not exist.
+ * - `INTERNAL` — unexpected server-side failure.
+ * - `NETWORK` — this machine is offline.
+ * - `SERVICES_DOWN` — Nylon Pay did not complete the request.
+ * - `TIMEOUT` — request exceeded the configured timeout.
+ */
+export type SdkErrorReason =
+  | "AUTH"
+  | "VALIDATION"
+  | "LIMIT"
+  | "RATE_LIMIT"
+  | "ACCOUNT"
+  | "PROVIDER"
+  | "DUPLICATE"
+  | "NOT_FOUND"
+  | "INTERNAL"
+  | "NETWORK"
+  | "SERVICES_DOWN"
+  | "TIMEOUT";
+
+/**
+ * @deprecated Use {@link SdkErrorReason}. Lowercase wire alias kept this release.
  */
 export type SdkErrorCategory =
   | "auth"
@@ -627,16 +642,21 @@ export type SdkErrorCategory =
   | "timeout";
 
 /**
- * Structured error returned by SDK operations. `category` is machine-readable
- * for branching logic; `message` is human-readable for logs and alerts.
- * `retryable` tells the merchant whether the same request may succeed
- * on re-invocation.
+ * Structured error returned by SDK operations. `reason` is the field to
+ * branch on. `message` is for logs and alerts. `retryable` says whether
+ * the same request may succeed on re-invocation.
  */
 export type SdkError = {
-  category: SdkErrorCategory;
+  reason: SdkErrorReason;
   message: string;
   retryable?: boolean;
-  /** Optional Nylon code riding the same message suffix as `category`. */
+  /**
+   * @deprecated Use `reason`. Lowercase wire category kept this release.
+   */
+  category: SdkErrorCategory;
+  /**
+   * @deprecated Use `reason`. String label kept for git-main installers.
+   */
   code?: string;
 };
 
@@ -668,8 +688,8 @@ export type TransportResult<T> = Result<T, string>;
  * `transaction` is populated for terminal status events (`success`, `failed`,
  * `cancelled`) — the `processing` event can fire before the full record is
  * fetched, so use `reference` there. `error` is populated for the `"error"`
- * event (network failure, timeout, reference mismatch). `code` carries an
- * optional stable Nylon error label.
+ * event (network failure, timeout, reference mismatch). `reason` is the
+ * stable label to branch on.
  *
  * Note: The `processing` event fires for all non-terminal statuses, including
  * `on_hold` (review-stage payouts). Use `transaction?.statusText` for
@@ -697,13 +717,15 @@ export type EventData = {
   transaction?: Transaction;
   /** Error message. Present for the `"error"` event. */
   error?: string;
+  /** Why the `"error"` event fired. Present when the failure carries a reason. */
+  reason?: SdkErrorReason;
   /**
-   * Machine-readable failure category. Present for the `"error"` event when the
-   * failure carries one (initiation rejection, polling/stream failure) — lets
-   * merchants branch on a stable category instead of parsing the message.
+   * @deprecated Use `reason`. Lowercase wire category kept this release.
    */
   category?: SdkErrorCategory;
-  /** Optional Nylon error code, present for the `"error"` event when known. */
+  /**
+   * @deprecated Use `reason`. String label kept for git-main installers.
+   */
   code?: string;
   /**
    * Whether re-invoking the same operation may succeed. Present for the
@@ -795,7 +817,7 @@ export interface NylonPaySdk {
    * only on invalid input (zero amount, empty phone, bank method without bank
    * details) — programmer errors caught before any network call. A server-side
    * initiation rejection (auth, limit, provider, network, timeout) does **not**
-   * throw: the returned instance emits an `"error"` event carrying `category`
+   * throw: the returned instance emits an `"error"` event carrying `reason`
    * and `retryable`, and `wait()` resolves `null`.
    *
    * @example
@@ -809,7 +831,7 @@ export interface NylonPaySdk {
    *
    * payment.on("success", ({ transaction }) => fulfillOrder(transaction));
    * payment.on("failed", ({ error }) => notifyCustomer(error));
-   * payment.on("error", ({ error, category }) => log.error(category, error));
+   * payment.on("error", ({ error, reason }) => log.error(reason, error));
    * ```
    */
   collectPayment(input: CollectPaymentInput): Promise<PaymentInstance>;
@@ -844,7 +866,7 @@ export interface NylonPaySdk {
    * Auto-generates an idempotency `reference` if omitted. Same error semantics
    * as {@link collectPayment}: throws synchronously on invalid input, but a
    * server-side initiation rejection surfaces as an `"error"` event (with
-   * `category`/`retryable`) rather than a throw.
+   * `reason`/`retryable`) rather than a throw.
    *
    * @example
    * ```ts

@@ -25,11 +25,13 @@ import {
   RETRYABLE_STATUS_CODES,
   SDK_SERVICE,
 } from "./sdk.config";
+import { buildSdkError } from "./sdk-error";
 import { createSignature, createTimestamp } from "./signature";
 import type {
   SdkError,
   SdkErrorCategory,
   SdkErrorHandler,
+  SdkErrorReason,
   TransportRequest,
   UnreachableReason,
 } from "./types";
@@ -65,10 +67,10 @@ const KNOWN_CATEGORIES = new Set<SdkErrorCategory>([
   "timeout",
 ]);
 
-/** HTTP status → category for errors that aren't server-tagged. */
-const STATUS_CATEGORY: Record<number, SdkErrorCategory> = {
-  408: "timeout",
-  429: "rate_limit",
+/** HTTP status → reason for errors that aren't server-tagged. */
+const STATUS_REASON: Record<number, SdkErrorReason> = {
+  408: "TIMEOUT",
+  429: "RATE_LIMIT",
 };
 
 /** Matches ` -- error-type: <category>` plus optional ` -- error-code: <code>`. */
@@ -103,26 +105,26 @@ function buildHttpError(params: {
   statusCode: number;
 }): SdkError {
   const parsed = parseCategoryFromMessage(params.message);
-  const category: SdkErrorCategory =
-    parsed.category ??
-    STATUS_CATEGORY[params.statusCode] ??
-    (params.statusCode >= 500 ? "internal" : "validation");
-  return {
-    category,
+  const reason: SdkErrorReason =
+    STATUS_REASON[params.statusCode] ??
+    (params.statusCode >= 500 ? "INTERNAL" : "VALIDATION");
+  return buildSdkError({
+    category: parsed.category ?? undefined,
+    reason: parsed.category ? undefined : reason,
     message: parsed.message,
     retryable: RETRYABLE_STATUS_CODES.has(params.statusCode),
-    ...(parsed.code ? { code: parsed.code } : {}),
-  };
+    code: parsed.code,
+  });
 }
 
 /**
- * Convert a structured SdkError into a throwable Error that still carries the
- * category and retryable flag. Used by async operations that throw on
- * initiation failure (invalid key, etc.) so merchants can `catch (e)` and read
- * `e.category`.
+ * Convert a structured SdkError into a throwable Error that still carries
+ * `reason` (and the deprecated aliases). Used by operations that throw on
+ * initiation failure so merchants can `catch (e)` and read `e.reason`.
  */
 export function createSdkError(error: SdkError): Error & SdkError {
   return Object.assign(new Error(error.message), {
+    reason: error.reason,
     category: error.category,
     retryable: error.retryable,
     ...(error.code ? { code: error.code } : {}),
@@ -371,11 +373,13 @@ export function createTransport({
         const contentLength = response.headers?.get("content-length");
         if (contentLength && Number(contentLength) > MAX_RESPONSE_BYTES) {
           cleanup();
-          return returnError({
-            category: "internal",
-            message: "Received an invalid response from the server",
-            retryable: false,
-          });
+          return returnError(
+            buildSdkError({
+              reason: "INTERNAL",
+              message: "Received an invalid response from the server",
+              retryable: false,
+            }),
+          );
         }
 
         if (!response.ok) {
@@ -421,11 +425,13 @@ export function createTransport({
           !("status" in responseBody)
         ) {
           cleanup();
-          return returnError({
-            category: "internal",
-            message: "Received an invalid response from the server",
-            retryable: false,
-          });
+          return returnError(
+            buildSdkError({
+              reason: "INTERNAL",
+              message: "Received an invalid response from the server",
+              retryable: false,
+            }),
+          );
         }
 
         const { status, message, data } = responseBody as {
@@ -446,11 +452,13 @@ export function createTransport({
           // was absent, which let a stripped-signature response through.
           if (!responseSignature) {
             cleanup();
-            return returnError({
-              category: "internal",
-              message: "Could not verify the server response",
-              retryable: false,
-            });
+            return returnError(
+              buildSdkError({
+                reason: "INTERNAL",
+                message: "Could not verify the server response",
+                retryable: false,
+              }),
+            );
           }
 
           const isValid = verifyResponseSignature(
@@ -460,11 +468,13 @@ export function createTransport({
           );
           if (!isValid) {
             cleanup();
-            return returnError({
-              category: "internal",
-              message: "Could not verify the server response",
-              retryable: false,
-            });
+            return returnError(
+              buildSdkError({
+                reason: "INTERNAL",
+                message: "Could not verify the server response",
+                retryable: false,
+              }),
+            );
           }
 
           // Signature proves who produced this; the echoed nonce proves it
@@ -474,11 +484,13 @@ export function createTransport({
 
           if (echoedNonce !== headers["x-nylon-nonce"]) {
             cleanup();
-            return returnError({
-              category: "internal",
-              message: "Could not verify the server response",
-              retryable: false,
-            });
+            return returnError(
+              buildSdkError({
+                reason: "INTERNAL",
+                message: "Could not verify the server response",
+                retryable: false,
+              }),
+            );
           }
 
           cleanup();
@@ -496,17 +508,12 @@ export function createTransport({
           error instanceof DOMException && error.name === "AbortError";
         const reason = classifyUnreachable(error);
         const sdkError: SdkError = isAbort
-          ? {
-              category: "timeout",
+          ? buildSdkError({
+              reason: "TIMEOUT",
               message: "The request timed out",
               retryable: true,
-            }
-          : {
-              category: "network",
-              message: reason,
-              retryable: true,
-              code: "unreachable",
-            };
+            })
+          : unreachableSdkError(reason);
 
         if (currentAttempt < maxRetries) {
           await delay(calculateBackoff(currentAttempt));
@@ -525,17 +532,17 @@ export function createTransport({
 }
 
 /**
- * Parse an error string into a structured SdkError with a `category`.
+ * Parse an error string into a structured SdkError with a `reason`.
  * Tries the JSON envelope first; otherwise pulls the server's
  * ` -- error-type: <category>` suffix off a raw message, falling back to
- * category `internal` when untagged.
+ * `INTERNAL` when untagged.
  *
  * @example
  * ```ts
  * const result = await sdk.getStatus({ reference: "ORDER-2026-001" });
  * if (!result.isOk) {
  *   const error = parseError(result.error);
- *   console.log(error.category, error.message);
+ *   console.log(error.reason, error.message);
  * }
  * ```
  */
@@ -545,25 +552,31 @@ export function parseError(error: string): SdkError {
   // contract that the SDK always exposes `parseError` synchronously).
   try {
     const parsed = JSON.parse(error) as unknown;
-    if (
-      parsed &&
-      typeof parsed === "object" &&
-      "category" in parsed &&
-      "message" in parsed &&
-      typeof (parsed as Record<string, unknown>).category === "string" &&
-      typeof (parsed as Record<string, unknown>).message === "string"
-    ) {
-      return parsed as SdkError;
+    if (parsed && typeof parsed === "object" && "message" in parsed) {
+      const rec = parsed as Record<string, unknown>;
+      if (typeof rec.message === "string") {
+        const hasReason = typeof rec.reason === "string";
+        const hasCategory = typeof rec.category === "string";
+        if (hasReason || hasCategory) {
+          return buildSdkError({
+            reason: hasReason ? String(rec.reason) : undefined,
+            category: hasCategory ? String(rec.category) : undefined,
+            message: rec.message,
+            retryable:
+              typeof rec.retryable === "boolean" ? rec.retryable : undefined,
+            code: typeof rec.code === "string" ? rec.code : undefined,
+          });
+        }
+      }
     }
   } catch {
     // Not our JSON envelope — fall through to suffix parsing.
   }
 
-  // Raw server message: pull the ` -- error-type: <category>` suffix if present.
   const fromSuffix = parseCategoryFromMessage(error);
-  return {
-    category: fromSuffix.category ?? "internal",
+  return buildSdkError({
+    category: fromSuffix.category ?? undefined,
     message: fromSuffix.message,
-    ...(fromSuffix.code ? { code: fromSuffix.code } : {}),
-  };
+    code: fromSuffix.code,
+  });
 }

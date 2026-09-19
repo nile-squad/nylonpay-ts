@@ -155,6 +155,7 @@ describe("createTransport", () => {
       expect(result.isErr).toBe(true);
       if (result.isErr) {
         const error = parseError(result.error);
+        expect(error.reason).toBe("AUTH");
         expect(error.category).toBe("auth");
         expect(error.message).toBe("[log_1] API key was not found");
         expect(error.retryable).toBe(false);
@@ -180,7 +181,7 @@ describe("createTransport", () => {
       expect(result.isErr).toBe(true);
       if (result.isErr) {
         const error = parseError(result.error);
-        expect(error.category).toBe("internal");
+        expect(error.reason).toBe("INTERNAL");
       }
     });
 
@@ -211,7 +212,7 @@ describe("createTransport", () => {
       expect(result.isErr).toBe(true);
       if (result.isErr) {
         const error = parseError(result.error);
-        expect(error.category).toBe("internal");
+        expect(error.reason).toBe("INTERNAL");
       }
     });
   });
@@ -438,6 +439,7 @@ describe("createTransport", () => {
       expect(first.isErr).toBe(true);
       if (first.isOk) throw new Error("expected network error");
       const parsed = parseError(first.error);
+      expect(parsed.reason).toBe("SERVICES_DOWN");
       expect(parsed.category).toBe("network");
       expect(parsed.message).toBe("Nylon Pay services seem to be down");
       expect(parsed.code).toBe("unreachable");
@@ -454,6 +456,7 @@ describe("createTransport", () => {
       expect(mockFetch).not.toHaveBeenCalled();
       expect(second.isErr).toBe(true);
       if (second.isOk) throw new Error("expected skip");
+      expect(parseError(second.error).reason).toBe("SERVICES_DOWN");
       expect(parseError(second.error).code).toBe("unreachable");
       expect(onError).toHaveBeenCalledTimes(2);
     });
@@ -485,6 +488,7 @@ describe("createTransport", () => {
       });
       expect(result.isErr).toBe(true);
       if (result.isOk) throw new Error("expected network error");
+      expect(parseError(result.error).reason).toBe("NETWORK");
       expect(parseError(result.error).message).toBe(
         "host has no internet connection",
       );
@@ -519,6 +523,7 @@ describe("createTransport", () => {
       });
       expect(result.isErr).toBe(true);
       expect(onError).toHaveBeenCalledOnce();
+      expect(onError.mock.calls[0][0].reason).toBe("VALIDATION");
       expect(onError.mock.calls[0][0].category).toBe("validation");
       expect(mockFetch).toHaveBeenCalledTimes(1);
     });
@@ -530,37 +535,50 @@ describe("parseError", () => {
     const error = parseError(
       '{"category":"not_found","message":"Not found","retryable":false}',
     );
+    expect(error.reason).toBe("NOT_FOUND");
     expect(error.category).toBe("not_found");
     expect(error.message).toBe("Not found");
     expect(error.retryable).toBe(false);
   });
 
-  it("extracts the category from a tagged raw message", () => {
+  it("extracts the reason from a tagged raw message", () => {
     const error = parseError("Transaction not found -- error-type: not_found");
+    expect(error.reason).toBe("NOT_FOUND");
     expect(error.category).toBe("not_found");
     expect(error.message).toBe("Transaction not found");
   });
 
-  it("extracts an optional error-code suffix", () => {
+  it("falls back to the category reason when the wire code is unrecognized", () => {
     const error = parseError(
       "The payout could not start -- error-type: account -- error-code: payout_gate",
     );
+    expect(error.reason).toBe("ACCOUNT");
     expect(error.category).toBe("account");
     expect(error.code).toBe("payout_gate");
     expect(error.message).toBe("The payout could not start");
   });
 
-  it("parses the duplicate category for reused references", () => {
+  it("parses the DUPLICATE reason for reused references", () => {
     const error = parseError(
       "Duplicate reference — a transaction with this reference already exists. References must be unique per transaction: retry with a new reference, or fetch the existing transaction by reference instead. -- error-type: duplicate",
     );
+    expect(error.reason).toBe("DUPLICATE");
     expect(error.category).toBe("duplicate");
     expect(error.message).toContain("retry with a new reference");
   });
 
-  it("falls back to internal for an untagged message", () => {
+  it("falls back to INTERNAL for an untagged message", () => {
     const error = parseError("some random error");
+    expect(error.reason).toBe("INTERNAL");
     expect(error.category).toBe("internal");
     expect(error.message).toBe("some random error");
+  });
+
+  it("prefers reason on a JSON envelope", () => {
+    const error = parseError(
+      '{"reason":"SERVICES_DOWN","category":"network","message":"Nylon Pay services seem to be down","code":"unreachable","retryable":true}',
+    );
+    expect(error.reason).toBe("SERVICES_DOWN");
+    expect(error.category).toBe("network");
   });
 });

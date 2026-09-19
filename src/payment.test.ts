@@ -479,7 +479,7 @@ describe("createPaymentInstance", () => {
       expect(handler.mock.calls[0][0].error).toContain(
         "Timed out waiting for the transaction status",
       );
-      expect(handler.mock.calls[0][0].category).toBe("timeout");
+      expect(handler.mock.calls[0][0].reason).toBe("TIMEOUT");
 
       // No further polling
       await vi.advanceTimersByTimeAsync(100);

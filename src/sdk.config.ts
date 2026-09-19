@@ -38,7 +38,7 @@ export const REACHABILITY_DOWN_RECHECK_MS = 15_000;
 /** Short timeout for a reachability check so it cannot stall a payment. */
 export const REACHABILITY_PROBE_TIMEOUT_MS = 3_000;
 
-/** `SdkError.code` when the SDK skipped a call because Nylon was unreachable. */
+/** Deprecated alias written onto `SdkError.code` for git-main installers. */
 export const UNREACHABLE_CODE = "unreachable";
 
 /** Host has no usable network. Stable string for `unreachable` handlers. */

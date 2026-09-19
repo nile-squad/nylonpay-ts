@@ -20,6 +20,7 @@ import type {
   PaymentEventHandler,
   PaymentInstance,
   SdkError,
+  SdkErrorReason,
   StatusResponse,
   Transaction,
   TransactionStatus,
@@ -146,7 +147,7 @@ export function createPaymentInstance(
 
   function resolveWithError(
     error: string,
-    category?: SdkError["category"],
+    reason?: SdkErrorReason,
     retryable?: boolean,
   ): void {
     state.resolved = true;
@@ -155,8 +156,9 @@ export function createPaymentInstance(
     emitEvent(
       "error",
       parsed.message,
-      category ?? parsed.category,
+      reason ?? parsed.reason,
       retryable ?? parsed.retryable,
+      parsed.category,
       parsed.code,
     );
   }
@@ -168,8 +170,9 @@ export function createPaymentInstance(
   function emitEvent(
     event: PaymentEvent,
     error?: string,
-    category?: SdkError["category"],
+    reason?: SdkErrorReason,
     retryable?: boolean,
+    category?: SdkError["category"],
     code?: string,
   ): void {
     const data: EventData = {
@@ -177,6 +180,7 @@ export function createPaymentInstance(
       reference: state.reference,
       transaction: state.transaction ?? undefined,
       error,
+      reason,
       category,
       code,
       retryable,
@@ -208,8 +212,9 @@ export function createPaymentInstance(
       emitEvent(
         "error",
         parsed.message,
-        parsed.category,
+        parsed.reason,
         parsed.retryable,
+        parsed.category,
         parsed.code,
       );
     }
@@ -234,7 +239,7 @@ export function createPaymentInstance(
     if (response.reference !== state.reference) {
       resolveWithError(
         "Received a status update for a different transaction",
-        "internal",
+        "INTERNAL",
       );
       return;
     }
@@ -281,21 +286,22 @@ export function createPaymentInstance(
 
   /**
    * Handle polling error.
-   * A `not_found` category during early polling is expected (the transaction
-   * may not have propagated yet) — keep polling. Any other category is a real
+   * A `NOT_FOUND` reason during early polling is expected (the transaction
+   * may not have propagated yet) — keep polling. Any other reason is a real
    * failure that stops polling.
    * @internal
    */
   function handlePollError(error: string): void {
     const parsed = parseError(error);
-    if (parsed.category === "not_found") {
+    if (parsed.reason === "NOT_FOUND") {
       return;
     }
     emitEvent(
       "error",
       parsed.message,
-      parsed.category,
+      parsed.reason,
       parsed.retryable,
+      parsed.category,
       parsed.code,
     );
     state.resolved = true;
@@ -343,7 +349,7 @@ export function createPaymentInstance(
     ) {
       resolveWithError(
         "Timed out waiting for the transaction status to update",
-        "timeout",
+        "TIMEOUT",
       );
       return;
     }
@@ -354,7 +360,7 @@ export function createPaymentInstance(
     ) {
       resolveWithError(
         "Timed out waiting for the transaction status to update",
-        "timeout",
+        "TIMEOUT",
       );
       return;
     }
@@ -528,7 +534,14 @@ export function createPaymentInstance(
     state.resolved = true;
     const err = deps.initialError;
     setTimeout(() => {
-      emitEvent("error", err.message, err.category, err.retryable, err.code);
+      emitEvent(
+        "error",
+        err.message,
+        err.reason,
+        err.retryable,
+        err.category,
+        err.code,
+      );
     }, 0);
   } else {
     startUpdates();

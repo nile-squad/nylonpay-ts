@@ -21,7 +21,7 @@ const nylonpay = createNylonPay({
   apiKey: "npk_test_...",
   apiSecret: "nps_test_...",
   onError: (error) => {
-    if (error.code === "unreachable") {
+    if (error.reason === "SERVICES_DOWN") {
       pausePaymentAttempts(error.message);
     }
   },
@@ -40,7 +40,7 @@ payment.on("failed", ({ error }) => notifyCustomer(error));
 
 ## Configuration
 
-Use your test keys to work in sandbox, or your production keys to go live. There is no separate `environment` option, the key determines the mode.
+Use your test keys to work in sandbox, or your production keys to go live. The key determines the mode.
 
 | Option | Required | Default | Description |
 |---|---|---|---|

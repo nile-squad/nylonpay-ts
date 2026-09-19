@@ -68,7 +68,7 @@ export async function pollUntilTerminal(
     const statusResult = await deps.fetchStatus({ reference: deps.reference });
     if (statusResult.isErr) {
       const parsed = parseError(statusResult.error);
-      if (parsed.category === "not_found") {
+      if (parsed.reason === "NOT_FOUND") {
         await sleep(deps.pollIntervalMs);
         continue;
       }
