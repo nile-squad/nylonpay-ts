@@ -130,7 +130,7 @@ const result = await nylonpay.makePayoutAndResolve({
 
 - **`pending`**, Payout accepted and queued for processing
 - **`processing`**, Provider is actively handling the disbursement
-- **`on_hold`**, Payout is under review (liquidity or compliance checks). Non-terminal; will complete to `successful`, `failed`, or `cancelled`.
+- **`on_hold`**, Payout is under review (liquidity or compliance checks). A payout from a `KES`, `TZS`, `RWF`, or `CDF` wallet also stays here until you confirm its exchange rate on the dashboard; unconfirmed after 24 hours, it ends `cancelled` and the money returns to your wallet. Non-terminal; will complete to `successful`, `failed`, or `cancelled`.
 - **`successful`**, Payout completed; funds sent to destination
 - **`failed`**, Payout failed; funds refunded to merchant account
 - **`cancelled`**, Payout was cancelled by the merchant
@@ -240,7 +240,7 @@ app.post("/webhooks", (req, res) => {
 | `cancelled` | Transaction was cancelled |
 | `error` | Network or polling error |
 
-For payouts specifically, `on_hold` indicates the payout is under review (liquidity or compliance checks). Polling continues automatically; use `transaction?.statusText` for a human-readable explanation.
+For payouts specifically, `on_hold` indicates the payout is under review (liquidity or compliance checks). A payout from a `KES`, `TZS`, `RWF`, or `CDF` wallet also stays here until you confirm its exchange rate on the dashboard; unconfirmed after 24 hours, it ends `cancelled` and the money returns to your wallet. Polling continues automatically; use `transaction?.statusText` for a human-readable explanation.
 
 ```ts
 payment.on("success", ({ transaction }) => { /* ... */ });
