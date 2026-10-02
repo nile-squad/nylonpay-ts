@@ -20,6 +20,7 @@ describe("makePayout", () => {
       destination: {
         accountHolderName: "Integration Test",
         accountNumber: TEST_PHONE,
+        phone: TEST_PHONE,
       },
       description: "Integration test payout",
     });
@@ -52,6 +53,7 @@ describe("makePayout", () => {
       destination: {
         accountHolderName: "Integration Test",
         accountNumber: TEST_PHONE,
+        phone: TEST_PHONE,
       },
       description: "Payout resolve shape test",
     });
@@ -78,6 +80,7 @@ describe("makePayout", () => {
       destination: {
         accountHolderName: "Integration Test",
         accountNumber: TEST_PHONE,
+        phone: TEST_PHONE,
       },
       description: "Idempotency test payout",
       reference: ref,
@@ -90,6 +93,7 @@ describe("makePayout", () => {
       destination: {
         accountHolderName: "Integration Test",
         accountNumber: TEST_PHONE,
+        phone: TEST_PHONE,
       },
       description: "Idempotency test payout",
       reference: ref,
