@@ -46,7 +46,7 @@ Use your test keys to work in sandbox, or your production keys to go live. The k
 |---|---|---|---|
 | `apiKey` | Yes | | Must start with `npk_` |
 | `apiSecret` | Yes | | Must start with `nps_` |
-| `baseUrl` | No | Default is used | Override for a custom endpoint |
+| `baseUrl` | No | `https://api.nylonpay.com/api/services` | Override for a custom endpoint. `LEGACY_BASE_URL` is the original address, still served |
 | `timeoutMs` | No | `90000` | Request timeout in milliseconds |
 | `maxRetries` | No | `3` | Retry count for failed requests |
 | `maxPollIntervalMs` | No | `2000` | Polling interval for async payments |

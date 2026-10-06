@@ -4,6 +4,7 @@
  * - Strips all whitespace
  * - Strips leading +
  * - If starts with "0" and length is 10 → prepend that currency's dial code
+ * - If it is 9 digits (a local number typed without its 0) → prepend the dial code
  *
  * Local `0…` numbers take the dial code for `currency` (UGX 256, KES 254,
  * TZS 255, RWF 250, CDF 243, ZMW 260, XAF 237). Unknown currency uses 256.
@@ -19,12 +20,17 @@ const DIAL_BY_CURRENCY: Readonly<Record<string, string>> = {
   ZMW: "260",
 };
 
+/** Every supported market uses 9-digit national numbers. */
+const NATIONAL_NUMBER = /^\d{9}$/;
+
 export function normalizePhone(phone: string, currency = "UGX"): string {
   let normalized = phone.replace(/\s+/g, "").replace(/^\+/, "");
   const dial = DIAL_BY_CURRENCY[currency.toUpperCase()] ?? "256";
 
   if (normalized.startsWith("0") && normalized.length === 10) {
     normalized = `${dial}${normalized.slice(1)}`;
+  } else if (NATIONAL_NUMBER.test(normalized)) {
+    normalized = `${dial}${normalized}`;
   }
 
   return normalized;

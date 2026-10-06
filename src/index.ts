@@ -30,6 +30,7 @@
 
 // Factory function - main entry point
 export { createNylonPay } from "./create-nylon-pay";
+export { DEFAULT_BASE_URL, LEGACY_BASE_URL } from "./sdk.config";
 // Error utilities
 export { createSdkError, parseError } from "./transport";
 // SDK instance type

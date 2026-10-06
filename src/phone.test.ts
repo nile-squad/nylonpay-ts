@@ -45,4 +45,10 @@ describe("normalizePhone", () => {
     expect(normalizePhone("0763456789", "ZMW")).toBe("260763456789");
     expect(normalizePhone("0671234567", "XAF")).toBe("237671234567");
   });
+
+  it("gives a 9-digit local number typed without its 0 the dial code", () => {
+    expect(normalizePhone("712345678", "TZS")).toBe("255712345678");
+    expect(normalizePhone("772 123 456", "UGX")).toBe("256772123456");
+    expect(normalizePhone("712345678")).toBe("256712345678");
+  });
 });

@@ -1,5 +1,11 @@
-/** Default production backend URL */
-export const DEFAULT_BASE_URL =
+/** Default production backend URL (the nylonpay.com domain, 2026-10). */
+export const DEFAULT_BASE_URL = "https://api.nylonpay.com/api/services";
+
+/**
+ * The original production URL. Still served, so existing integrations keep
+ * working; pass it as `baseUrl` to stay on it.
+ */
+export const LEGACY_BASE_URL =
   "https://api.nylonpay.nilesquad.com/api/services";
 
 /** Default request timeout (90 seconds — covers server inline resolve windows). */
