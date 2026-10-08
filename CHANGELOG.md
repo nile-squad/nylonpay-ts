@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.1.1
+
+Upgrading from 2.1.0.
+
+### Fixed
+
+- The README's `on_hold` payout status no longer names internal review reasons or claims `statusText` explains why a payout is held. It now matches what a merchant sees: a payout on `on_hold` is waiting on review and completes on its own, and `statusText` carries the review sentence, for example "This payout is being reviewed and will complete shortly."
+- The README's `processing` payout status no longer describes provider internals.
+
 ## 2.1.0
 
 Upgrading from 2.0.1.
