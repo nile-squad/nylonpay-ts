@@ -42,7 +42,7 @@ export const GATEWAY_DOWN_STATUSES = new Set([502, 503, 504]);
 /**
  * Walk a thrown value and its `cause` chain for codes and message text.
  * Node's fetch wraps DNS failures as `TypeError: fetch failed` with
- * `cause.code === "ENOTFOUND"` — looking only at the outer message
+ * `cause.code === "ENOTFOUND"`, looking only at the outer message
  * would classify those as Nylon-down.
  */
 function collectErrorSignals(error: unknown): {

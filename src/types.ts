@@ -188,7 +188,7 @@ export type CollectPaymentInput = {
   tags?: string[];
   /**
    * Sandbox-only forced outcome: `"success"` always succeeds, `"fail"` always
-   * fails — so integration tests can walk both paths on demand. Omit for the
+   * fails, so integration tests can walk both paths on demand. Omit for the
    * default random sandbox behavior. Rejected with a validation error when
    * used with a live key.
    */
@@ -207,11 +207,11 @@ export type MakePayoutInput = {
   description: string;
   reference?: string;
   metadata?: Record<string, string>;
-  /** Business labels — same normalization rules as {@link CollectPaymentInput.tags}. */
+  /** Business labels, same normalization rules as {@link CollectPaymentInput.tags}. */
   tags?: string[];
   /**
    * Sandbox-only forced outcome: `"success"` always succeeds, `"fail"` always
-   * fails — so integration tests can walk both paths on demand. Omit for the
+   * fails, so integration tests can walk both paths on demand. Omit for the
    * default random sandbox behavior. Rejected with a validation error when
    * used with a live key.
    */
@@ -279,7 +279,7 @@ export type VerifyPhoneInput = {
 export type CreateInvoiceInput = {
   amount: number;
   currency: Currency;
-  /** Email address to send the invoice to. Required — invoices are email-first. */
+  /** Email address to send the invoice to. Required, invoices are email-first. */
   customerEmail: string;
   customerName?: string;
   customerPhone?: string;
@@ -288,7 +288,7 @@ export type CreateInvoiceInput = {
   items?: InvoiceItem[];
   merchantReference?: string;
   metadata?: Record<string, string>;
-  /** Business labels — same normalization rules as {@link CollectPaymentInput.tags}. */
+  /** Business labels, same normalization rules as {@link CollectPaymentInput.tags}. */
   tags?: string[];
 };
 
@@ -305,9 +305,9 @@ export type VerifyWebhookInput = {
    * timestamp carried inside the signed body must be within this many seconds of
    * now, or verification fails. Defaults to 300 (5 minutes).
    *
-   * `0` means a tolerance of zero seconds — maximum strictness, which rejects
+   * `0` means a tolerance of zero seconds, maximum strictness, which rejects
    * essentially everything. It does NOT disable the check. To opt out, pass
-   * `DISABLE_FRESHNESS_CHECK` deliberately (not recommended — a captured
+   * `DISABLE_FRESHNESS_CHECK` deliberately (not recommended, a captured
    * webhook then verifies forever).
    */
   toleranceSeconds?: number;
@@ -329,12 +329,12 @@ export type Transaction = {
   description: string;
   /**
    * Present (true) when this response replayed an existing transaction because
-   * the reference was already used — same reference, same transaction. No new
+   * the reference was already used, same reference, same transaction. No new
    * payment was initiated; use a fresh reference to start a new one.
    */
   duplicate?: boolean;
   /**
-   * The underlying operator's (telco's/bank's) own transaction id — what the
+   * The underlying operator's (telco's/bank's) own transaction id, what the
    * paying customer sees on their receipt. Use it to cross-validate customer
    * pay claims. Null until the operator reports it (typically at terminal
    * status); may be absent on older backend versions.
@@ -405,9 +405,9 @@ export type InvoiceResponse = {
   id: string;
   /** Hosted payment links do not mint an invoice number today. */
   invoiceNumber: string | null;
-  /** Direct payment URL — share this with the customer. */
+  /** Direct payment URL, share this with the customer. */
   paymentLink: string;
-  /** Deprecated alias of `paymentLink` — kept this window. */
+  /** Deprecated alias of `paymentLink`, kept this window. */
   url?: string;
   amount: string;
   currency: string;
@@ -417,7 +417,7 @@ export type InvoiceResponse = {
 
 /**
  * Merchant-facing transaction record delivered inside a webhook payload.
- * Field names match the wire JSON exactly (camelCase) — merchants type
+ * Field names match the wire JSON exactly (camelCase), merchants type
  * the `JSON.parse(req.body)` output against this directly. It is NOT
  * passed through the SDK's snake_case ↔ camelCase wire conversion.
  */
@@ -436,7 +436,7 @@ export type WebhookTransactionSnapshot = {
   previousStatus: TransactionStatus;
   /**
    * These three are `null` whenever the backend has no value stored for the
-   * transaction (older rows especially) — it sends the key with an explicit
+   * transaction (older rows especially). It sends the key with an explicit
    * null rather than omitting it.
    */
   type: TransactionType | null;
@@ -457,7 +457,7 @@ export type WebhookTransactionSnapshot = {
 /**
  * Structured payload delivered to the merchant's webhook endpoint.
  * Merchants should verify the `x-nylon-signature` header before trusting
- * the data — the signature does NOT live in the body.
+ * the data, the signature does NOT live in the body.
  */
 export type WebhookPayload = {
   /** Backend delivery id (`buildDeliveryBody` field name; snake_case on the wire). */
@@ -478,8 +478,8 @@ export type BeforeCollectHook = (
 ) => CollectPaymentInput | undefined | Promise<CollectPaymentInput | undefined>;
 
 /**
- * The input handed to an `after*` hook. It is the final wire payload — reference
- * resolved, phone normalized, and any `before*`-hook mutations applied — so a
+ * The input handed to an `after*` hook. It is the final wire payload, reference
+ * resolved, phone normalized, and any `before*`-hook mutations applied, so a
  * hook observes exactly what was sent. The `raw` property additionally carries
  * the untouched original merchant input (pre-normalization, pre-`before*`-hook),
  * so audit logs can record both what the merchant typed and what hit the wire.
@@ -518,7 +518,7 @@ export type AfterPayoutHook = (
 
 /**
  * Wrapper applied to every lifecycle hook. The SDK runs `fn` inside `safeTry`,
- * so a throw or rejection in merchant code never bubbles into the payment flow —
+ * so a throw or rejection in merchant code never bubbles into the payment flow,
  * it is routed to `onError` instead.
  *
  * WHY `onError` is required: an unhandled hook failure in a payments SDK is the
@@ -541,7 +541,7 @@ export type SdkHook<TFn> = {
 
 /**
  * Lifecycle hooks registered once at SDK creation. Each hook fires on every
- * matching operation — use them for cross-cutting concerns like logging,
+ * matching operation, use them for cross-cutting concerns like logging,
  * audit trails, and payload enrichment. Every hook is wrapped in {@link SdkHook}
  * so merchant code can never crash the payment flow.
  */
@@ -557,7 +557,7 @@ export type SdkHooks = {
  * All timeouts and retry limits are configurable for different
  * network environments.
  *
- * Test vs. live mode is determined by the API key, not by config — a sandbox
+ * Test vs. live mode is determined by the API key, not by config, a sandbox
  * key routes to test providers, a live key processes real money.
  */
 export type NylonPayConfig = {
@@ -567,9 +567,9 @@ export type NylonPayConfig = {
   timeoutMs?: number;
   maxRetries?: number;
   maxPollIntervalMs?: number;
-  /** Optional cap — omit to wait until the payment reaches a terminal state. */
+  /** Optional cap, omit to wait until the payment reaches a terminal state. */
   maxPollDurationMs?: number;
-  /** Optional cap — omit to wait until the payment reaches a terminal state. */
+  /** Optional cap, omit to wait until the payment reaches a terminal state. */
   maxPollAttempts?: number;
   /** When a payment is flagged delayed, keep waiting (default) or return it pending. */
   onDelayed?: OnDelayedBehavior;
@@ -597,19 +597,19 @@ export type SdkAuthHeaders = {
 /**
  * Why an SDK operation failed. Branch on these exact strings.
  *
- * - `AUTH` — invalid, missing, revoked, or expired key, bad signature, replay, scope.
- * - `VALIDATION` — input the server rejected.
- * - `LIMIT` — account or KYC transaction limits exceeded.
- * - `RATE_LIMIT` — too many requests.
- * - `ACCOUNT` — merchant account missing or not active.
- * - `PROVIDER` — payment provider rejected the operation.
- * - `DUPLICATE` — the reference belongs to another account. Retry with a new
+ * - `AUTH`, invalid, missing, revoked, or expired key, bad signature, replay, scope.
+ * - `VALIDATION`, input the server rejected.
+ * - `LIMIT`, account or KYC transaction limits exceeded.
+ * - `RATE_LIMIT`, too many requests.
+ * - `ACCOUNT`, merchant account missing or not active.
+ * - `PROVIDER`, payment provider rejected the operation.
+ * - `DUPLICATE`, the reference belongs to another account. Retry with a new
  *   reference. Reusing a reference you own replays that transaction.
- * - `NOT_FOUND` — referenced transaction does not exist.
- * - `INTERNAL` — unexpected server-side failure.
- * - `NETWORK` — this machine is offline.
- * - `SERVICES_DOWN` — Nylon Pay did not complete the request.
- * - `TIMEOUT` — request exceeded the configured timeout.
+ * - `NOT_FOUND`, referenced transaction does not exist.
+ * - `INTERNAL`, unexpected server-side failure.
+ * - `NETWORK`, this machine is offline.
+ * - `SERVICES_DOWN`, Nylon Pay did not complete the request.
+ * - `TIMEOUT`, request exceeded the configured timeout.
  */
 export type SdkErrorReason =
   | "AUTH"
@@ -686,7 +686,7 @@ export type TransportResult<T> = Result<T, string>;
 /**
  * Data passed to every payment event handler. `reference` is always present;
  * `transaction` is populated for terminal status events (`success`, `failed`,
- * `cancelled`) — the `processing` event can fire before the full record is
+ * `cancelled`), the `processing` event can fire before the full record is
  * fetched, so use `reference` there. `error` is populated for the `"error"`
  * event (network failure, timeout, reference mismatch). `reason` is the
  * stable label to branch on.
@@ -708,7 +708,7 @@ export type EventData = {
   /** The event that triggered this handler. */
   event: PaymentEvent;
   /**
-   * The transaction reference. Always present — available on every event,
+   * The transaction reference. Always present, available on every event,
    * including lifecycle events fired before the full transaction record
    * has been fetched.
    */
@@ -765,7 +765,7 @@ export type TransactionSummary = {
 };
 
 /**
- * Input for listing and filtering transactions. All fields are optional —
+ * Input for listing and filtering transactions. All fields are optional,
  * omitting filters returns the most recent transactions for the calling
  * key's account and mode.
  */
@@ -778,9 +778,9 @@ export type ListTransactionsInput = {
   limit?: number;
   /** Zero-based offset for pagination (default 0). */
   offset?: number;
-  /** ISO 8601 datetime — only transactions created at or after this time. */
+  /** ISO 8601 datetime, only transactions created at or after this time. */
   createdAfter?: string;
-  /** ISO 8601 datetime — only transactions created at or before this time. */
+  /** ISO 8601 datetime, only transactions created at or before this time. */
   createdBefore?: string;
 };
 
@@ -815,7 +815,7 @@ export interface NylonPaySdk {
    *
    * Auto-generates an idempotency `reference` if omitted. Throws *synchronously*
    * only on invalid input (zero amount, empty phone, bank method without bank
-   * details) — programmer errors caught before any network call. A server-side
+   * details), programmer errors caught before any network call. A server-side
    * initiation rejection (auth, limit, provider, network, timeout) does **not**
    * throw: the returned instance emits an `"error"` event carrying `reason`
    * and `retryable`, and `wait()` resolves `null`.
@@ -838,7 +838,7 @@ export interface NylonPaySdk {
 
   /**
    * Initiate a collection and block until the transaction reaches a terminal
-   * state. The server polls internally — this is a single request/response
+   * state. The server polls internally, this is a single request/response
    * call, not client-side polling. Use for CLI tools, serverless functions,
    * or simple scripts that don't need event-driven updates.
    *
@@ -885,7 +885,7 @@ export interface NylonPaySdk {
 
   /**
    * Initiate a disbursement and block until the payout reaches a terminal
-   * state. The server polls internally — single request/response call.
+   * state. The server polls internally, single request/response call.
    *
    * @example
    * ```ts
@@ -915,7 +915,7 @@ export interface NylonPaySdk {
   ): Promise<Result<UtilityPaymentResponse, string>>;
 
   /**
-   * One-shot status check for a transaction. Does not poll — returns the
+   * One-shot status check for a transaction. Does not poll, returns the
    * current server-side state. Use for lightweight checks or when you
    * already have the reference from a webhook or previous call.
    *
@@ -986,7 +986,7 @@ export interface NylonPaySdk {
 
   /**
    * List transactions for the calling key's account, with optional filtering.
-   * Returns lightweight summaries — use `getTransaction` for full detail.
+   * Returns lightweight summaries, use `getTransaction` for full detail.
    *
    * Tag filters use AND semantics: `tags: ["vip", "promo"]` returns only
    * transactions tagged with BOTH labels. Tags are normalized (lowercase) before

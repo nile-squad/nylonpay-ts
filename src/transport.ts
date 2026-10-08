@@ -46,7 +46,7 @@ const CACHED_FINGERPRINT = generateFingerprint();
  * `error-code` says `parseError` can read the optional ` -- error-code: <code>`
  * tail. Every release before this one parsed the category with a regex anchored
  * at the end of the message, so a code appended after it left them with no
- * match — category silently downgraded to `internal`, and the raw suffixes
+ * match, category silently downgraded to `internal`, and the raw suffixes
  * shown to the user as part of the message. The backend only appends a code for
  * clients listed here.
  */
@@ -79,7 +79,7 @@ const ERROR_TYPE_SUFFIX =
 
 /**
  * Split the server's tagged category off an error message. The backend appends
- * ` -- error-type: <category>` to every SDK error (the only channel available —
+ * ` -- error-type: <category>` to every SDK error (the only channel available:
  * Nile returns 200/400 only and drops the response `data` on failures). The
  * leading `[logId]` and human text are preserved as the message.
  */
@@ -216,7 +216,7 @@ function buildEnvelope({
  *
  * The signature is computed over the inner `payload` (the operation input plus
  * `_fingerprint`), NOT the full Nile envelope. This matches the server, which
- * verifies the signature against the raw request payload — see the Transport
+ * verifies the signature against the raw request payload, see the Transport
  * Contract in the Nylon Pay SDK Spec (https://github.com/nile-squad/specs).
  */
 function buildAuthHeaders({
@@ -320,8 +320,8 @@ export function createTransport({
   /**
    * Send a request to the backend.
    *
-   * The envelope/body is built once (the payload — including the `reference`
-   * idempotency key — is constant across attempts), but each attempt is signed
+   * The envelope/body is built once (the payload, including the `reference`
+   * idempotency key, is constant across attempts), but each attempt is signed
    * fresh: a new nonce, timestamp, and signature per try. This keeps every retry
    * inside the backend's timestamp-freshness window no matter how long the
    * backoff runs, and means a retry is never rejected as a nonce replay. Safety
@@ -345,7 +345,7 @@ export function createTransport({
     const bodyString = JSON.stringify(envelope);
 
     async function attempt(currentAttempt: number): Promise<Result<T, string>> {
-      // Sign per attempt — fresh nonce/timestamp/signature over the constant
+      // Sign per attempt, fresh nonce/timestamp/signature over the constant
       // payload, so a post-backoff retry carries a current timestamp and a
       // distinct nonce. See the send() doc for why this is safe.
       const headers = buildAuthHeaders({
@@ -368,7 +368,7 @@ export function createTransport({
           reachability.noteUp();
         }
 
-        // Reject oversized responses before parsing — a compromised
+        // Reject oversized responses before parsing, a compromised
         // server could return a huge body to exhaust memory.
         const contentLength = response.headers?.get("content-length");
         if (contentLength && Number(contentLength) > MAX_RESPONSE_BYTES) {
@@ -446,7 +446,7 @@ export function createTransport({
 
           // Fail closed. Every authenticated success response from the backend
           // is signed (see backend signSdkResponse). A missing signature means
-          // the response was tampered with — e.g. a MITM stripped the field — or
+          // the response was tampered with, e.g. a MITM stripped the field, or
           // did not originate from the backend. Reject rather than trust
           // unverified data; a prior version skipped verification when the field
           // was absent, which let a stripped-signature response through.
@@ -570,7 +570,7 @@ export function parseError(error: string): SdkError {
       }
     }
   } catch {
-    // Not our JSON envelope — fall through to suffix parsing.
+    // Not our JSON envelope, fall through to suffix parsing.
   }
 
   const fromSuffix = parseCategoryFromMessage(error);

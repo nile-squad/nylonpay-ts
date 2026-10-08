@@ -56,11 +56,11 @@ type PaymentState = {
 
 /**
  * Map transaction status to payment event. "pending", "processing", and "on_hold"
- * all map to the "processing" event — to the merchant they are the same lifecycle
+ * all map to the "processing" event, to the merchant they are the same lifecycle
  * moment (payment accepted, in flight, awaiting the customer/provider or under review).
  * Emission is deduped by event, so status flaps never double-fire the same event.
  *
- * "on_hold" (review-stage payout) is a non-terminal status — it continues polling
+ * "on_hold" (review-stage payout) is a non-terminal status. It continues polling
  * until the payout reaches a terminal state (successful, failed, or cancelled).
  */
 const STATUS_TO_EVENT: Partial<Record<TransactionStatus, PaymentEvent>> = {
@@ -88,7 +88,7 @@ const TERMINAL_STATES = new Set<TransactionStatus>([
 
 /**
  * Normalise raw backend status strings to TransactionStatus.
- * The backend may return "completed" for successful payments — map it to
+ * The backend may return "completed" for successful payments, map it to
  * "successful" so SDK events fire correctly.
  */
 function normalizeStatus(raw: string): TransactionStatus {
@@ -121,7 +121,7 @@ export function createPaymentInstance(
     /**
      * When set, the operation never started (the backend rejected initiation).
      * The instance emits this as an `"error"` event on the next tick instead of
-     * polling — so a server-side rejection surfaces as an event, not a throw.
+     * polling, so a server-side rejection surfaces as an event, not a throw.
      */
     initialError?: SdkError;
   },
@@ -228,8 +228,8 @@ export function createPaymentInstance(
    */
   async function handleStatusUpdate(response: StatusResponse): Promise<void> {
     // Once the instance has resolved (terminal state, error, or timeout), no
-    // further events may fire. A late status — e.g. an SSE chunk buffered before
-    // the stream closed on fallback, or an in-flight poll — must be ignored so
+    // further events may fire. A late status, e.g. an SSE chunk buffered before
+    // the stream closed on fallback, or an in-flight poll, must be ignored so
     // it cannot emit a duplicate terminal event or a spurious out-of-order one.
     // The guard runs before any await, so the first caller to resolve wins.
     if (state.resolved) {
@@ -256,7 +256,7 @@ export function createPaymentInstance(
       return;
     }
 
-    // Dedupe by *event*, not raw status — "pending" and "processing" both map
+    // Dedupe by *event*, not raw status, "pending" and "processing" both map
     // to the "processing" event, and a status flap (processing → pending) must
     // not re-fire it. Each lifecycle event fires at most once per instance.
     const event = statusToEvent(newStatus);
@@ -287,7 +287,7 @@ export function createPaymentInstance(
   /**
    * Handle polling error.
    * A `NOT_FOUND` reason during early polling is expected (the transaction
-   * may not have propagated yet) — keep polling. Any other reason is a real
+   * may not have propagated yet), keep polling. Any other reason is a real
    * failure that stops polling.
    * @internal
    */
@@ -387,10 +387,10 @@ export function createPaymentInstance(
    * Start status updates. If the initial status is already terminal (e.g. sandbox
    * resolves synchronously), emit the terminal event after a tick so handlers
    * registered after instance creation still fire. Otherwise emit the initial
-   * in-flight event ("processing") on the next tick — the initiation response
+   * in-flight event ("processing") on the next tick, the initiation response
    * is typically "pending", and a fast payment can jump straight to a terminal
-   * status between polls, which previously meant "processing" never fired —
-   * then begin polling.
+   * status between polls, which previously meant "processing" never fired.
+   * Then begin polling.
    * @internal
    */
   function startUpdates(): void {
@@ -463,7 +463,7 @@ export function createPaymentInstance(
   /**
    * Wait for payment to reach a terminal state.
    * Resolves with the full Transaction on success, null on failure/cancel/error.
-   * Never rejects — check the return value to determine outcome.
+   * Never rejects, check the return value to determine outcome.
    */
   function wait(): Promise<Transaction | null> {
     return new Promise((resolve) => {

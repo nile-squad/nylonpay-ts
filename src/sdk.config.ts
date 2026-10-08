@@ -8,7 +8,7 @@ export const DEFAULT_BASE_URL = "https://api.nylonpay.com/api/services";
 export const LEGACY_BASE_URL =
   "https://api.nylonpay.nilesquad.com/api/services";
 
-/** Default request timeout (90 seconds — covers server inline resolve windows). */
+/** Default request timeout (90 seconds, covers server inline resolve windows). */
 export const DEFAULT_TIMEOUT_MS = 90_000;
 
 /** Default max retry attempts for transport failures */
@@ -74,5 +74,5 @@ export const SDK_ACTIONS = {
 /** HTTP status codes that trigger retries */
 export const RETRYABLE_STATUS_CODES = new Set([408, 429, 500, 502, 503, 504]);
 
-/** Maximum response body size (10 MB) — responses exceeding this are rejected before parsing. */
+/** Maximum response body size (10 MB), responses exceeding this are rejected before parsing. */
 export const MAX_RESPONSE_BYTES = 10 * 1024 * 1024;

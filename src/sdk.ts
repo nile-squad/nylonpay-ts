@@ -78,11 +78,11 @@ function resolveReference(reference?: string): string {
 /**
  * Run a lifecycle hook safely. A disabled or unset hook is a no-op. The hook's
  * `fn` runs inside `safeTry` so a throw/rejection in merchant code never bubbles
- * into the payment flow — it is routed to the hook's `onError` (which is itself
+ * into the payment flow. It is routed to the hook's `onError` (which is itself
  * wrapped, so a faulty handler can't crash us either).
  *
  * Returns the hook's resolved value on success, or `undefined` when the hook was
- * skipped or failed. Callers treat `undefined` as "no override" — for before
+ * skipped or failed. Callers treat `undefined` as "no override", for before
  * hooks that means the original payload is used unchanged.
  */
 async function runHook<TFn extends (...args: never[]) => unknown>(
@@ -175,8 +175,8 @@ function validatePhoneFormat(normalizedPhone: string, fieldName: string): void {
  * synchronous check (reference length, amount, required fields, phone format)
  * and returns the payload with the reference resolved and the phone normalized.
  *
- * WHY a single helper: it is run twice — once on the original input and again on
- * a `before*` hook's mutated output — so a hook can never bypass validation
+ * WHY a single helper: it is run twice, once on the original input and again on
+ * a `before*` hook's mutated output, so a hook can never bypass validation
  * (invariant #12). Sharing one function keeps the two passes identical.
  */
 function prepareCollectPayload(
@@ -206,7 +206,7 @@ function prepareCollectPayload(
 
 /**
  * Validate and normalize a payout input into the wire payload. Payout sibling of
- * {@link prepareCollectPayload} — run on both the original input and any
+ * {@link prepareCollectPayload}, run on both the original input and any
  * `before*` hook output so hooks cannot bypass validation (invariant #12).
  */
 function preparePayoutPayload(
@@ -351,7 +351,7 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
     );
 
     // Initiation failed (invalid key, signature, limit, provider reject). The
-    // transaction never started — return a PaymentInstance that emits an
+    // transaction never started, return a PaymentInstance that emits an
     // "error" event instead of throwing, so merchants handle it via events.
     if (result.isErr) {
       const sdkErr = parseError(result.error);
@@ -428,7 +428,7 @@ export function createSdkInstance(config: ResolvedConfig): NylonPaySdk {
       { ...payload, raw: input },
     );
 
-    // Initiation failed — return a PaymentInstance that emits an "error"
+    // Initiation failed, return a PaymentInstance that emits an "error"
     // event instead of throwing (see collectPayment for rationale).
     if (result.isErr) {
       const sdkErr = parseError(result.error);

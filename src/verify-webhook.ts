@@ -14,7 +14,7 @@ const DEFAULT_TOLERANCE_SECONDS = 300;
  * Explicit opt-out of the freshness check.
  *
  * Must be passed deliberately. `toleranceSeconds: 0` does NOT disable the
- * check — it means a tolerance of zero seconds, i.e. as strict as it gets,
+ * check, it means a tolerance of zero seconds, i.e. as strict as it gets,
  * which in practice rejects almost everything. That is the safe reading: a
  * developer reaching for `0` is asking for maximum strictness, and previously
  * got the exact opposite (no freshness check at all, silently).
@@ -55,12 +55,12 @@ function extractSignedTimestampMs(payloadString: string): number | null {
   const raw = (parsed as Record<string, unknown>).timestamp;
 
   if (typeof raw === "number" && Number.isFinite(raw)) {
-    // Accept epoch seconds or milliseconds — values below ~1e12 are seconds.
+    // Accept epoch seconds or milliseconds, values below ~1e12 are seconds.
     return raw < 1e12 ? raw * 1000 : raw;
   }
 
   if (typeof raw === "string") {
-    // Numeric string first (e.g. "1718976000") — accepted so this SDK and the
+    // Numeric string first (e.g. "1718976000"), accepted so this SDK and the
     // Python one agree on every timestamp shape. Date.parse would read such a
     // string as a year, so it has to be handled before the ISO branch.
     const numeric = Number(raw);
@@ -79,17 +79,17 @@ function extractSignedTimestampMs(payloadString: string): number | null {
  * Verify that a webhook payload was genuinely sent by Nylon Pay.
  *
  * Two checks, both must pass:
- * 1. **Authenticity** — HMAC-SHA256 over the raw payload bytes (NOT parsed
+ * 1. **Authenticity**, HMAC-SHA256 over the raw payload bytes (NOT parsed
  *    JSON, spec invariant #8) matches the provided signature.
- * 2. **Freshness** — the `timestamp` carried inside the signed body is within
+ * 2. **Freshness**, the `timestamp` carried inside the signed body is within
  *    `toleranceSeconds` of now (default 300s). This is what stops a replay: a
  *    captured `(body, signature)` pair stays cryptographically valid forever,
  *    but its embedded timestamp goes stale. Every genuine delivery, including
  *    retries hours later, is re-stamped and re-signed, so this never rejects
  *    legitimate traffic. `toleranceSeconds: 0` means zero tolerance (maximum
- *    strictness), NOT off — pass `DISABLE_FRESHNESS_CHECK` to opt out.
+ *    strictness), NOT off, pass `DISABLE_FRESHNESS_CHECK` to opt out.
  *
- * @returns True when the signature is valid and (when enforced) the webhook is fresh. Never throws — returns false on any error.
+ * @returns True when the signature is valid and (when enforced) the webhook is fresh. Never throws, returns false on any error.
  */
 export function verifyWebhookSignature(input: VerifyWebhookInput): boolean {
   try {
@@ -101,7 +101,7 @@ export function verifyWebhookSignature(input: VerifyWebhookInput): boolean {
 
     // One canonical signature: lowercase hex, byte-for-byte what Nylon Pay
     // sends in `x-nylon-signature`. Comparing decoded bytes alone would also
-    // accept uppercase hex — the same value spelled a second way — so the
+    // accept uppercase hex, the same value spelled a second way, so the
     // canonical form is enforced explicitly, matching the Python SDK.
     if (input.signature !== input.signature.toLowerCase()) {
       return false;
@@ -118,7 +118,7 @@ export function verifyWebhookSignature(input: VerifyWebhookInput): boolean {
       return false;
     }
 
-    // Signature is authentic — now enforce freshness using the signed timestamp.
+    // Signature is authentic, now enforce freshness using the signed timestamp.
     const toleranceSeconds =
       input.toleranceSeconds ?? DEFAULT_TOLERANCE_SECONDS;
     if (toleranceSeconds === DISABLE_FRESHNESS_CHECK) {
