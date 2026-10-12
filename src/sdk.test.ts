@@ -1750,4 +1750,92 @@ describe("createNylonPay", () => {
       expect(mockSend).not.toHaveBeenCalled();
     });
   });
+
+  describe("prompt (sandbox PIN gate)", () => {
+    const collectBase = {
+      amount: 1000,
+      currency: "UGX" as const,
+      customer: { name: "Test", phoneNumber: "+256700000000" },
+      description: "Test payment",
+    };
+    const payoutBase = {
+      amount: 5000,
+      currency: "UGX" as const,
+      customer: { name: "Test", phoneNumber: "+256700000000" },
+      destination: {
+        accountHolderName: "Test",
+        accountNumber: "123456",
+        phone: "+256700000000",
+      },
+      description: "Test payout",
+    };
+
+    function testSdk() {
+      return createNylonPay({
+        apiKey: "npk_test",
+        apiSecret: "nps_test",
+        force: true,
+      });
+    }
+
+    it("collectPayment and collectPaymentAndResolve forward prompt pin on the wire", async () => {
+      mockSend.mockResolvedValue(
+        Ok({ reference: "test-ref", status: "pending" }),
+      );
+
+      await testSdk().collectPayment({ ...collectBase, prompt: "pin" });
+      expect(mockSend.mock.calls[0][0].payload.prompt).toBe("pin");
+
+      mockSend.mockClear();
+      mockSend.mockResolvedValue(Ok(mockTransaction));
+      await testSdk().collectPaymentAndResolve({
+        ...collectBase,
+        prompt: "pin",
+      });
+      expect(mockSend.mock.calls[0][0].payload.prompt).toBe("pin");
+    });
+
+    it("makePayout and makePayoutAndResolve forward prompt pin on the wire", async () => {
+      mockSend.mockResolvedValue(
+        Ok({ reference: "test-ref", status: "pending" }),
+      );
+
+      await testSdk().makePayout({ ...payoutBase, prompt: "pin" });
+      expect(mockSend.mock.calls[0][0].payload.prompt).toBe("pin");
+
+      mockSend.mockClear();
+      mockSend.mockResolvedValue(Ok({ ...mockTransaction, type: "payout" }));
+      await testSdk().makePayoutAndResolve({ ...payoutBase, prompt: "pin" });
+      expect(mockSend.mock.calls[0][0].payload.prompt).toBe("pin");
+    });
+
+    it("omitted prompt is absent from the wire payload", async () => {
+      mockSend.mockResolvedValue(
+        Ok({ reference: "test-ref", status: "pending" }),
+      );
+
+      await testSdk().collectPayment(collectBase);
+
+      const request = mockSend.mock.calls[0][0];
+      expect("prompt" in request.payload).toBe(false);
+    });
+
+    it("invalid prompt throws a validation error before any network call", async () => {
+      const sdk = testSdk();
+
+      await expect(
+        sdk.collectPayment({
+          ...collectBase,
+          prompt: "later" as unknown as "pin",
+        }),
+      ).rejects.toThrow('prompt must be "pin"');
+      await expect(
+        sdk.makePayout({
+          ...payoutBase,
+          prompt: "later" as unknown as "pin",
+        }),
+      ).rejects.toThrow('prompt must be "pin"');
+      expect(mockSend).not.toHaveBeenCalled();
+    });
+  });
 });

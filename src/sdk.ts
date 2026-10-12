@@ -26,6 +26,7 @@ import {
   type PayBillInput,
   type PaymentInstance,
   type PhoneVerification,
+  SANDBOX_PROMPTS,
   SANDBOX_TEST_OUTCOMES,
   type SdkErrorHandler,
   type SdkHook,
@@ -152,6 +153,20 @@ function validateTestOutcome(testOutcome: string | undefined): void {
   }
 }
 
+/**
+ * Validate the sandbox-only customer PIN gate. Same role as
+ * {@link validateTestOutcome}: the type constrains TypeScript callers, this
+ * check covers plain-JS callers and `before*` hook mutations.
+ */
+function validateSandboxPrompt(prompt: string | undefined): void {
+  if (
+    prompt !== undefined &&
+    !(SANDBOX_PROMPTS as readonly string[]).includes(prompt)
+  ) {
+    throwValidation('prompt must be "pin"');
+  }
+}
+
 /** Validate that a string value is non-empty. */
 function validateNonEmpty(value: string, fieldName: string): void {
   if (!value || value.trim() === "") {
@@ -185,6 +200,7 @@ function prepareCollectPayload(
   const reference = resolveReference(input.reference);
   validateCollectionAmount(input.amount, input.currency);
   validateTestOutcome(input.testOutcome);
+  validateSandboxPrompt(input.prompt);
   validateNonEmpty(input.customer.name, "customer.name");
   validateNonEmpty(input.customer.phoneNumber, "customer.phoneNumber");
   const normalizedPhone = normalizePhone(
@@ -215,6 +231,7 @@ function preparePayoutPayload(
   const reference = resolveReference(input.reference);
   validatePayoutAmount(input.amount, input.currency);
   validateTestOutcome(input.testOutcome);
+  validateSandboxPrompt(input.prompt);
   validateNonEmpty(input.customer.name, "customer.name");
   validateNonEmpty(input.customer.phoneNumber, "customer.phoneNumber");
   const normalizedPhone = normalizePhone(

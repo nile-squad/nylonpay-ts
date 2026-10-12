@@ -41,6 +41,12 @@ const nylonpay = createNylonPay({
   `makePayoutAndResolve` to force the result. Omit it and the sandbox decides at
   random, which makes a test that expects one outcome flaky. Any other value
   throws a `validation` error, and so does using it with a live key.
+- With a sandbox key, `prompt: "pin"` holds a test payment until the merchant
+  types the customer's 5-digit PIN, shown on the dashboard phone simulator. The
+  wait is up to 2 minutes with 3 tries. `testOutcome` wins if both are set, and
+  a live key rejects it with a `validation` error. The `AndResolve` variants can
+  wait about 2 minutes with `prompt`, so raise `maxPollDurationMs` above that if
+  you cap polling.
 - Amounts are integers in the currency's smallest tracked unit (for example `10000`).
 - Supported currencies: `USD`, `EUR`, `GBP`, `KES`, `UGX`, `TZS`, `RWF`, `CDF`.
 

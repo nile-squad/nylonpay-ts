@@ -81,6 +81,15 @@ export const SANDBOX_TEST_OUTCOMES = [
 export type SandboxTestOutcome = (typeof SANDBOX_TEST_OUTCOMES)[number];
 
 /**
+ * Sandbox-only customer PIN gate. `"pin"` holds the payment until the merchant
+ * types the customer's PIN on the dashboard phone simulator. Keep this list
+ * identical to the backend sandbox prompt values.
+ */
+export const SANDBOX_PROMPTS = ["pin"] as const;
+
+export type SandboxPrompt = (typeof SANDBOX_PROMPTS)[number];
+
+/**
  * Events emitted by a PaymentInstance as a transaction progresses.
  * Merchants subscribe to these to react to status changes without
  * manually polling.
@@ -193,6 +202,15 @@ export type CollectPaymentInput = {
    * used with a live key.
    */
   testOutcome?: SandboxTestOutcome;
+  /**
+   * Sandbox-only customer PIN gate: `"pin"` holds the payment until the
+   * merchant types the customer's 5-digit PIN on the dashboard phone simulator.
+   * The wait is up to 2 minutes with 3 tries; a wrong PIN 3 times, or no answer
+   * in 2 minutes, fails it. Ignored when `testOutcome` is also set. Rejected
+   * with a validation error when used with a live key. The Resolve variants can
+   * wait about 2 minutes, so raise `maxPollDurationMs` above that if you cap it.
+   */
+  prompt?: SandboxPrompt;
 };
 
 /**
@@ -216,6 +234,15 @@ export type MakePayoutInput = {
    * used with a live key.
    */
   testOutcome?: SandboxTestOutcome;
+  /**
+   * Sandbox-only customer PIN gate: `"pin"` holds the payment until the
+   * merchant types the customer's 5-digit PIN on the dashboard phone simulator.
+   * The wait is up to 2 minutes with 3 tries; a wrong PIN 3 times, or no answer
+   * in 2 minutes, fails it. Ignored when `testOutcome` is also set. Rejected
+   * with a validation error when used with a live key. The Resolve variants can
+   * wait about 2 minutes, so raise `maxPollDurationMs` above that if you cap it.
+   */
+  prompt?: SandboxPrompt;
 };
 
 /**

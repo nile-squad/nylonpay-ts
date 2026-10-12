@@ -69,6 +69,7 @@ export type {
   PaymentInstance,
   PaymentMethod,
   PhoneVerification,
+  SandboxPrompt,
   SandboxTestOutcome,
   SdkError,
   SdkErrorCategory,
@@ -88,7 +89,11 @@ export type {
   WebhookPayload,
   WebhookTransactionSnapshot,
 } from "./types";
-export { FAILURE_CODES, SANDBOX_TEST_OUTCOMES } from "./types";
+export {
+  FAILURE_CODES,
+  SANDBOX_PROMPTS,
+  SANDBOX_TEST_OUTCOMES,
+} from "./types";
 // Standalone webhook verification utility
 export {
   DISABLE_FRESHNESS_CHECK,
