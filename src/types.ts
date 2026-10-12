@@ -205,6 +205,7 @@ export type CollectPaymentInput = {
   /**
    * Sandbox-only customer PIN gate: `"pin"` holds the payment until the
    * merchant types the customer's 5-digit PIN on the dashboard phone simulator.
+   * One PIN per merchant, shared by all of that merchant's sandbox keys.
    * The wait is up to 2 minutes with 3 tries; a wrong PIN 3 times, or no answer
    * in 2 minutes, fails it. Ignored when `testOutcome` is also set. Rejected
    * with a validation error when used with a live key. The Resolve variants can
@@ -237,6 +238,7 @@ export type MakePayoutInput = {
   /**
    * Sandbox-only customer PIN gate: `"pin"` holds the payment until the
    * merchant types the customer's 5-digit PIN on the dashboard phone simulator.
+   * One PIN per merchant, shared by all of that merchant's sandbox keys.
    * The wait is up to 2 minutes with 3 tries; a wrong PIN 3 times, or no answer
    * in 2 minutes, fails it. Ignored when `testOutcome` is also set. Rejected
    * with a validation error when used with a live key. The Resolve variants can

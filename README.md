@@ -129,7 +129,7 @@ const result = await nylonpay.makePayoutAndResolve({
 With a sandbox key, `collectPayment`, `collectPaymentAndResolve`, `makePayout` and `makePayoutAndResolve` accept two test-only options:
 
 - `testOutcome: "success" | "fail"` (or a failure code) forces the result.
-- `prompt: "pin"` holds the payment until the merchant types the customer's 5-digit PIN, shown on the dashboard phone simulator. The wait is up to 2 minutes with 3 tries.
+- `prompt: "pin"` holds the payment until the merchant types the customer's 5-digit PIN, shown on the dashboard phone simulator. The wait is up to about 2 minutes with 3 tries. The PIN is one per merchant and works with every sandbox key of that merchant.
 
 If both are set, `testOutcome` wins. With neither, the sandbox decides on its own. A live key rejects both. The `AndResolve` variants can wait about 2 minutes with `prompt`, so raise `maxPollDurationMs` above that if you cap polling.
 
