@@ -9,7 +9,7 @@ Server-side SDK for Nylon Pay. ESM + CJS, Node.js 18+. Published as
 `@nile-squad/nylonpay-ts`.
 
 Integration flows (language-agnostic):
-[Nylon Pay integration skill](https://docs.nylonpay.nilesquad.com/docs/skills).
+[Nylon Pay integration skill](https://docs.nylonpay.com/docs/skills).
 This file covers TypeScript setup and syntax. Method names are camelCase.
 Hub: [nylonpay-overview](https://github.com/nile-squad/nylonpay-overview).
 
@@ -144,6 +144,6 @@ if (!isValid) return res.status(401).send("Invalid signature");
 | Python | [`nylonpay-py`](https://github.com/nile-squad/nylonpay-py) | [SKILL.md](https://github.com/nile-squad/nylonpay-py/blob/main/SKILL.md) |
 | PHP | [`nile-squad/nylonpay-php`](https://github.com/nile-squad/nylonpay-php) | [SKILL.md](https://github.com/nile-squad/nylonpay-php/blob/main/SKILL.md) |
 
-Integration skill: [docs](https://docs.nylonpay.nilesquad.com/docs/skills).
-Example prompts: [docs](https://docs.nylonpay.nilesquad.com/docs/skills/example-prompts).
+Integration skill: [docs](https://docs.nylonpay.com/docs/skills).
+Example prompts: [docs](https://docs.nylonpay.com/docs/skills/example-prompts).
 Hub: [nylonpay-overview](https://github.com/nile-squad/nylonpay-overview).

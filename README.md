@@ -4,7 +4,7 @@ Server-side SDK for integrating Nylon Pay into merchant applications. Supports T
 
 This package is the reference implementation of the [Nylon Pay SDK Spec](https://github.com/nile-squad/specs/blob/main/nylonpay-sdk-spec/spec.md), the canonical, language-agnostic contract for building Nylon Pay SDKs in any language.
 
-[Full documentation](https://docs.nylonpay.nilesquad.com/docs)
+[Full documentation](https://docs.nylonpay.com/docs)
 
 ## Install
 
@@ -311,11 +311,11 @@ if (!result.isOk) {
 
 ## Links
 
-- [Documentation](https://docs.nylonpay.nilesquad.com/docs)
+- [Documentation](https://docs.nylonpay.com/docs)
 - [SDK Spec](https://github.com/nile-squad/specs/blob/main/nylonpay-sdk-spec/spec.md)
 - [GitHub Repository](https://github.com/nile-squad/nylonpay-ts)
 - [Python SDK](https://github.com/nile-squad/nylonpay-py)
-- [Nylon Pay](https://nylonpay.nilesquad.com)
+- [Nylon Pay](https://nylonpay.com)
 
 ## License
 
