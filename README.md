@@ -40,7 +40,7 @@ payment.on("failed", ({ error }) => notifyCustomer(error));
 
 ## Configuration
 
-Use your test keys to work in sandbox, or your production keys to go live. The key determines the mode.
+Use your test keys to work in sandbox, or your production keys to go live.
 
 | Option | Required | Default | Description |
 |---|---|---|---|
@@ -81,7 +81,7 @@ field to auto-generate a UUID v4.
 
 ### collectPaymentAndResolve
 
-Block until the collection reaches a terminal state. Single request and response, no client-side polling.
+Block until the collection reaches a terminal state. Single request and response; the server resolves the payment and returns the final state.
 
 ```ts
 const result = await nylonpay.collectPaymentAndResolve({
@@ -96,14 +96,18 @@ if (result.isOk) console.log("Paid:", result.value.reference);
 
 ### makePayout
 
-Disburse funds to a destination account.
+Send funds to a destination mobile money wallet or bank account. `destination.phone` is required on every payout.
 
 ```ts
 const payout = await nylonpay.makePayout({
   amount: 50000,
   currency: "UGX",
   customer: { name: "Jane", phoneNumber: "+256700000000" },
-  destination: { accountHolderName: "Jane Doe", accountNumber: "123456" },
+  destination: {
+    accountHolderName: "Jane Doe",
+    accountNumber: "123456",
+    phone: "+256700000000",
+  },
   description: "Refund for order #1234",
 });
 
@@ -119,7 +123,11 @@ const result = await nylonpay.makePayoutAndResolve({
   amount: 50000,
   currency: "UGX",
   customer: { name: "Jane", phoneNumber: "+256700000000" },
-  destination: { accountHolderName: "Jane Doe", accountNumber: "123456" },
+  destination: {
+    accountHolderName: "Jane Doe",
+    accountNumber: "123456",
+    phone: "+256700000000",
+  },
   description: "Refund",
 });
 ```
@@ -175,7 +183,7 @@ if (tx) {
 
 ### getStatus
 
-One-shot status check for a transaction. Does not poll, returns the current server-side state.
+One-shot status check for a transaction. Returns the current server-side state in a single call.
 
 ```ts
 const result = await nylonpay.getStatus({ reference: "550e8400-e29b-41d4-a716-446655440000" });
@@ -207,18 +215,18 @@ code (`+254710000000`). A local number starting with `0` is treated as Uganda.
 
 ### createInvoice
 
-Generate a hosted payment link. Card payments are only supported via this hosted flow.
+Generate a hosted payment link. Card payments run through this hosted flow. Invoices require an approved Level 2 account in every currency.
 
 ```ts
 const result = await nylonpay.createInvoice({
   amount: 25000,
   currency: "UGX",
+  customerEmail: "customer@example.com",
   description: "Monthly subscription",
   items: [{ name: "Pro Plan", quantity: 1, unitPrice: 25000 }],
-  redirectUrl: "https://myapp.com/thank-you",
 });
 
-if (result.isOk) sendEmail(result.value.url);
+if (result.isOk) sendEmail(result.value.paymentLink);
 ```
 
 ### verifyWebhookSignature
@@ -307,7 +315,7 @@ if (!result.isOk) {
 
 ## Supported Currencies
 
-`USD`, `EUR`, `GBP`, `KES`, `UGX`, `TZS`, `RWF`
+`USD`, `EUR`, `GBP`, `KES`, `UGX`, `TZS`, `RWF`, `CDF`
 
 ## Links
 
